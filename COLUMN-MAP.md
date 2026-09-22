@@ -67,8 +67,8 @@ the identity.
 
 ### F — `Category (-1: Low, 0: Med, 1: High)`
 Severity, **defect rows only**. Filled on 302 of 392 (77.0%), which is exactly the defect count.
-Blank on all 78 info and all 12 limit rows. Observed values `0` (281) and `1` (21); `-1` unused
-here but documented.
+Blank on all 78 info and all 12 limit rows. Observed values `0` (281) and `1` (21) in the stock
+file; `-1` confirmed real in the second export after a comment was set to Low.
 → Maps to `comment.severity`, nullable. Do not render a severity chip on info or limit
 comments.
 
@@ -86,8 +86,9 @@ numeric answer types.
 → Optional. Map to `comment.unit_options[]` or record as unsupported.
 
 ### I — `Recommendation (from list)`
-Filled on 4 rows (1.0%). Lowercase slugs from a fixed Spectora list: `pro` ×3, `monitor` ×1.
-The published vocabulary is not documented, so treat unseen values as opaque.
+Filled on 4 rows (1.0%). Lowercase slugs from a fixed Spectora list: `pro` ×3, `monitor` ×1,
+plus `cabinet` observed in the second export. The vocabulary is not documented, so treat unseen
+values as opaque.
 → Map verbatim to `comment.recommendation`, or declare unsupported. Do not invent a
 display label for a slug you have not seen.
 
@@ -121,7 +122,43 @@ Filled on 1 row only (0.3%), value `true`.
 **Empty on all 392 rows.**
 
 ### O — `Default Location`
-**Empty on all 392 rows.** Relates to Spectora's account-level Location Tags feature.
+**Empty on all 392 rows** of the stock file. Populated in the second export.
+
+**This is a multi-select, flattened into one string.** Spectora's Location picker is a grid of
+account-level tags in three groups: level (1st Floor, 2nd Floor, 3rd Floor, Basement,
+Crawlspace, Attic, Master), direction (North, South, West, East, Northwest, Northeast,
+Southwest, Southeast) and room (Kitchen, Dining Room, Living Room, Bedroom, Bathroom, Garage).
+Selecting tags composes them into a single string, **space-joined, with a leading space**, in
+the picker's own column order rather than click order. Selecting every tag produced:
+
+```
+" 1st Floor 2nd Floor 3rd Floor Basement Crawlspace Attic Master North South West East Northwest Northeast Southwest Southeast Kitchen Dining Room Living Room Bedroom Bathroom Garage,"
+```
+
+The earlier observed value `' 1st Floor West Northwest Bedroom'` is therefore **four tags**, not
+one location.
+
+**The encoding is unparseable by construction.** The delimiter is a space, and tag labels
+contain spaces (`1st Floor`, `Dining Room`, `Living Room`). `1st Floor 2nd Floor` cannot be
+split back into its tags without already knowing the tag vocabulary, and that vocabulary is an
+account-level setting under Settings > Location Tags that is **not in the export**.
+
+**Custom tags can be any string, including punctuation.** To prove it, a tag whose label is a
+bare comma was added to this account's Location Tags and selected; it sits after Garage, renders
+in the picker as a dot-sized glyph, and is why the composed string ends in `Garage,`. It is not a
+Spectora default. The point stands regardless of who added it: a real customer's account can hold
+any label, so no delimiter is safe for decomposing this field, and a tokeniser that splits on
+commas or spaces will mis-handle real data.
+
+-> Maps to `comment.default_location` as a **verbatim string**. Do not model it as a tag array.
+Tokenising against the 21 stock labels is possible as a best-effort display aid, flagged as
+such, and will fail on any account with custom tags. Trim for display only; store the leading
+space.
+
+This is the second field in the format that is lossy by design. `Multiple Choice Options` uses
+a comma delimiter with no escaping; `Default Location` uses a space delimiter with values that
+contain spaces.
+
 
 ### P — `Default Estimate Min` — degenerate
 `10` on **all 392 rows**. A system default, not customer data.
@@ -143,16 +180,28 @@ Filled on 1 row only (0.3%), value `true`.
 
 ### V–AO — `Default Photo 1..10` and `Default Photo N Caption`
 Twenty columns, interleaved photo then caption. **Every one empty on all 392 rows.**
-These are URL or filename text fields; **no image binary is ever carried by the export.**
+These are **Spectora CDN URLs**, observed as
+`https://cdn.spectora.com/default_photos/images/.../original/<name>.png?<cachebuster>`, with the
+caption in the adjacent column. **No image binary is carried by the export**, and the URL dies
+with the customer's Spectora account. Fetch at import. See `PRESERVATION.md` section 4.
 Note Spectora's published import format documents only Photos 1–3; real exports emit 1–10.
 
 ### AP — `Last Modified`
 Format `MM/DD/YYYY HH:MM:SS`, 24-hour, no timezone. 100% filled.
-**This is not a content timestamp.** In this file the 392 rows carry only 9 distinct values
-spanning 8 seconds on the export date. An independent export of the same template carries 15
-distinct values spanning 14 seconds on *its* export date. The column records when the export
-ran, not when the inspector last edited the comment.
-→ Do not surface it as "last edited by the customer."
+
+**Correction: this is a genuine per-comment modification timestamp.** An earlier version of
+this document said it recorded export time. Two exports of this account taken 18 hours apart
+carry **identical** values on 382 of 392 rows. The 04:32:57-04:33:05 cluster is when the stock
+template was instantiated into the account, which on a freshly loaded template is every row's
+last modification. The rows that differ are the ones actually saved since: the test comment at
+10:46:10 and one other at 07:40:02.
+
+Two consequences. On a stock template the column looks useless because every row shares the
+load time. On a four-year-tuned template it is **the only signal in the file of which comments
+the customer has actually touched and when**, which is exactly what a migration reviewer wants to
+know. Model it. Also note it reflects last *save*, not last *content change*: row 12 was
+re-saved with identical content and picked up a new timestamp.
+-> Maps to `comment.source_last_modified`.
 
 ---
 
@@ -184,6 +233,8 @@ correct.
 The "missing from the export" bucket, evidenced rather than assumed.
 
 - **Template name.** No column. Survives only in the filename.
+- **The Location Tags vocabulary.** Account-level under Settings > Location Tags. Only the
+  composed per-comment string is exported, and it cannot be decomposed without the list.
 - **Section and item ordering.** No order column above the comment level. See the finding
   below.
 - **Section and item attributes**: icons, optional or required flags, Standards of Practice
@@ -193,6 +244,8 @@ The "missing from the export" bucket, evidenced rather than assumed.
 - **All template-level settings**: Header Text, Display Options, Item Ratings configuration,
   Defect Categories, Reinspection Categories, Reinspection Header Text.
 - **Image and video binaries.**
+- **Embedded videos, even as references.** The `<iframe>` is stripped from `Comment Text`; only
+  an empty `youtube-embed-wrapper` div survives. One occurrence here, seven in Room-by-Room.
 
 ### Finding: item display order is not recoverable
 

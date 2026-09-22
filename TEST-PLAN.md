@@ -1,0 +1,116 @@
+# Remaining unknowns, and the one session that closes them
+
+Everything verified so far comes from three real exports and one round-trip. What follows is
+what is still unobserved, ranked by whether it changes code or only fills in the map. Each item
+names the exact edit to make in Spectora. Make all of them in one session on a handful of
+throwaway comments, then export **twice**: once as HTML Text, once as Plain Text.
+
+---
+
+## A. Changes parser or model. Must test.
+
+### A1. Do empty sections and empty items export at all?
+Rows are comments. A section with no items, or an item with no comments, produces zero rows.
+If so, the export cannot represent them and the customer's structure is silently truncated.
+**Test:** add one new section with no items, and one new item under an existing section with no
+comments. Export. Look for them.
+**If absent:** `MISSING_FROM_EXPORT`, and the import report must say "sections and items that
+contain no comments cannot be exported by Spectora".
+
+### A2. Can a multiple-choice option contain a comma, and how is it encoded?
+Column G is comma-delimited with no visible escaping. If Spectora allows a comma inside a choice,
+the field is ambiguous by construction. If it strips or refuses it, the field is safe.
+**Test:** on a checkbox comment, add choices `Smith, John`, `1,000 sq ft` and `He said "no"`.
+Export. Inspect column G raw.
+**Outcome decides:** whether `split(',')` is correct or whether G must be stored verbatim with a
+warning.
+
+### A3. What do `range` and `date` answer types look like?
+Never observed. They are the only documented answer types not yet seen, and `range` is the only
+consumer of column M `Default Value 2` and one of two consumers of column N `Default Unit Type`.
+**Test:** set one comment to `range` with Default Value 10, Default Value 2 50, Default Unit Type
+`inches`. Set another to `date` with a default date chosen. Export.
+**Outcome decides:** the type and format of L, M, N, and whether `date` has a serialised format
+that needs parsing.
+
+### A4. Encoding depth of `Comment Name`, and non-ampersand characters everywhere.
+Columns A, B, D are double-encoded; G is single. Column C has never contained an ampersand, so
+its depth is untested. Characters other than `&` are untested in every column.
+**Test:** rename one comment to `Smith & Sons <test> "quoted"`, one item to `Attic & Eaves`,
+one section to `Roof <main>`. Export. Inspect raw XML.
+**Outcome decides:** the per-column decode table, and whether `<`, `>`, `"` are entity-encoded
+consistently with `&`.
+
+### A5. The Plain Text export.
+Never seen. The detection heuristic for "you exported the wrong variant" is currently "no row
+contains markup", which is a guess.
+**Test:** export the same template as Plain Text. Diff against the HTML export.
+**Outcome decides:** whether the only difference is column D, what plain-text D looks like
+(stripped tags? converted to newlines? entities?), and whether any other column differs.
+
+---
+
+## B. Fills in the map. Worth doing, does not change code.
+
+### B1. `Locked`, `Disable Photos`, `Simple Format` value format.
+All three empty on every observed row. Documented as `true`/`false` for two of them; `Simple
+Format` is undocumented.
+**Test:** find each toggle on a comment, turn it on. Export. Note the literal value and, for
+Simple Format, what it changes in the editor.
+
+### B2. Multiple default photos.
+Only `Default Photo 1` has been observed.
+**Test:** add three photos with captions to one comment. Export. Confirm they fill V, X, Z in
+order with captions in W, Y, AA, and that the URL pattern is stable.
+
+### B3. `Recommendation` vocabulary.
+Three slugs observed: `pro`, `monitor`, `cabinet`. The dropdown is "from list".
+**Test:** open the Recommendation dropdown on any deficiency and screenshot the full list, or set
+six different comments to six different recommendations. Export. Map label to slug.
+
+### B4. `Uses`.
+`0` on every row. Presumably increments when a comment is used in a published report.
+**Test:** if a sample inspection is run in Spectora anyway, publish it using two or three
+comments, then export. See whether `Uses` moved.
+
+### B5. `Default Value` for `number`, `text` and `checkbox`.
+Only observed once, as `true` on a boolean. Unknown whether a checkbox default is one choice, a
+list, or an index.
+**Test:** set a default on one comment of each type. Export.
+
+### B6. Item reorder.
+Item order differed between two exports with no edits. Unknown whether export order is random,
+creation-order, or tracks the UI after some trigger.
+**Test:** drag two items to swap them in the UI. Export twice, a few minutes apart. Compare item
+order in both to the UI.
+**Outcome:** either "export order is unrelated to UI order" or "export order tracks UI order but
+lags", which changes the wording of the import warning, not the code.
+
+---
+
+## C. Already known to be unrecoverable from the export. No test can help.
+
+- Section and item display order (no column; confirmed unstable across exports).
+- Section icons, optional/required flags, Standards of Practice references, reminders, info-only
+  flags, overview-grid membership.
+- Template-level settings: Header Text, Display Options, Item Ratings configuration, Defect
+  Categories, Reinspection Categories and Header Text.
+- The Location Tags vocabulary. Only the composed per-comment string is exported.
+- Attachments.
+- Image binaries. Photo columns are URLs into `cdn.spectora.com`.
+- The template's own name. Filename only.
+
+---
+
+## D. What the map already has, for contrast
+
+Verified from real files and one round-trip: file mechanics (OOXML in `.xls`, one sheet, 42
+columns, sparse cells, `t="str"`), the three-level hierarchy and its identity rules, per-column
+entity depth for A, B, D and G, full HTML round-trip fidelity including Froala video and table
+markup, all three `Comment Type` values, all three `Category` values, four of six `Answer Type`
+values, `Multiple Choice Options` format, `Order (w/i item)` semantics, `Last Modified` as a real
+per-comment save time, `Default Location` as a flattened multi-select, `Default Photo 1` URL
+format, and the non-determinism of item order.
+
+**After section A is done, the parser has no remaining unknowns.** Section B is for the column
+map and the walkthrough. Section C is the missing-from-export list, already written.

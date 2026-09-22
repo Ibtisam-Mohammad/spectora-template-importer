@@ -8,6 +8,7 @@ Two files analysed:
 | File | Rows | Sections | Items | Distinct item names |
 | --- | --- | --- | --- | --- |
 | `InterNACHI Residential -2026-09-22.xls` (committed) | 392 | 13 | 69 | 61 |
+| `InterNACHI Residential -2026-09-22_test_comment_format.xls` (committed; same account, one comment rewritten with every editor control) | 392 | 13 | 69 | 61 |
 | Room-by-Room Residential (second export, generalisation test) | 798 | 22 | 136 | **62** |
 
 Both are 42 columns. The second file exists only to prove the parser rules generalise; it is
@@ -91,9 +92,12 @@ carry `Order = 5`. All six informational comments under `Inspection Details / Ge
 appear in the InterNACHI file in forward alphabetical order with `Order` 0 through 5, and in the
 Room-by-Room file in **reverse** order with `Order` constant at 5.
 
-**Item order does not match the UI at all.** Two independent exports both order `Exterior` as
-`… Eaves, Walkways, Vegetation`; Spectora's editor shows Vegetation before Walkways. Section
-order matched the UI exactly in both files.
+**Item order is not stable, even across exports of the same account.** The first export of
+this account ordered `Exterior` as `... Eaves, Walkways, Vegetation`. A second export 18 hours
+later ordered it `... Eaves, Vegetation, Walkways`, which matches the Spectora editor. The
+comments inside those two items were not modified in between; their `Last Modified` values are
+unchanged. Nothing in the file distinguishes the two orderings. Section order matched the UI in
+every export examined.
 
 **Practical rule:** sort comments by `Order`, tie-break on row position, render type groups as
 Informational, Limitations, Deficiencies. Then **state in the import report that display order
@@ -130,6 +134,11 @@ Only `info` rows vary, carrying `checkbox`, `number`, `text` and one `boolean`.
 - Attributes: `href`, `target`, one `class`, one `style`.
 - **31 `&amp;` entities survive XML decoding and must remain encoded**, because the value is
   HTML.
+- **The single `style` attribute is an empty YouTube embed wrapper.** `<div
+  class="youtube-embed-wrapper" style="position:relative;padding-bottom:56.25%;…">&nbsp;</div>`
+  with no `<iframe>` inside. Seven identical empty shells in Room-by-Room. **These are artifacts
+  of the stock template, not export loss**: a round-trip test proved the export preserves
+  Froala video embeds intact. See `PRESERVATION.md` section 4.
 - **43 hyperlinks to 20 external hosts.** None are Spectora-hosted, so they will not break on
   migration. Mostly consumer DIY sites, plus `nachi.org`, `youtube.com` and one `porch.com`.
   Many use `http://` rather than `https://`.
@@ -150,6 +159,18 @@ implementation applies, would corrupt data in this file.
   `Knob & Tube` and `1 1/2"`.
 - `Multiple Choice Options` is single entity-encoded, unlike the name and body columns. See
   `COLUMN-MAP.md`.
+
+---
+
+## 6b. Default Location is a flattened multi-select
+
+Confirmed from Spectora's Location picker: tags from three groups (level, direction, room) are
+space-joined into one string with a leading space, in picker order. Tag labels themselves contain
+spaces, so the string cannot be split back into tags without the account's tag vocabulary, which
+is not in the export. A custom tag with a bare comma as its label was added as a test and
+survived the round trip, so tag labels can be arbitrary punctuation and no delimiter is safe.
+Store verbatim.
+Details in `COLUMN-MAP.md` under column O.
 
 ---
 
