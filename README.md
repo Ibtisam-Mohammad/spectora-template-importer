@@ -4,8 +4,12 @@ Take-home for Hive Inspect. Upload a Spectora **Export HTML Text** spreadsheet, 
 template you can browse, edit and duplicate, with a report of exactly what was imported and
 what was not. The brief is in `docs/assignment/`; decisions and limits are in `NOTES.md`.
 
-**Live app:** TODO: add the Vercel production URL. It opens on the seeded InterNACHI
-Residential template. There is no login.
+**Live app:** https://spectora-template-importer-mu.vercel.app. There is no login.
+
+- The seeded InterNACHI Residential template:
+  https://spectora-template-importer-mu.vercel.app/t/e3eabef9-0cdd-4c09-aef3-bd8e46e569d4
+- Its template report, covering what happened during the import:
+  https://spectora-template-importer-mu.vercel.app/runs/c2e444de-ebbd-49bc-82a0-02c7cd52cfdd
 
 ## Stack
 
