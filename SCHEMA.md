@@ -12,6 +12,23 @@ shared between templates.
 Every decision below is justified by a measurement in `EDA-FINDINGS.md` or a column definition
 in `COLUMN-MAP.md`.
 
+## Rule zero: know the format, never the template
+
+The importer may depend on **Spectora's file format**: the 42 column headers, what each column
+means, that one row is one comment, that sections and items are contiguous blocks, how text is
+encoded. That is the contract every export shares, verified identical across every file examined.
+
+The importer must **never** depend on **template content**: no section, item, comment, class or
+value names; no pattern matching on text the inspector typed; no lookup tables built from what
+one template happened to contain. The committed exports are test fixtures, not a specification.
+Anything a customer can type is data to store, never a signal to branch on.
+
+Concretely, this rules out several ideas proposed earlier and since withdrawn: detecting empty
+video wrappers by their class name, flagging "numeric-looking" multiple-choice fragments, a
+slug-to-label table for recommendations, warning on names that contain `</`, and prefix or
+pattern matching on column headers. Headers are matched exactly against the known 42, and a
+mismatch is reported rather than guessed around.
+
 ---
 
 ## Layer 1 — Hierarchy
@@ -171,7 +188,7 @@ create table import_run (
   template_id      uuid not null references template(id) on delete cascade,
   source_filename  text not null,
   source_sha256    text not null,
-  source_variant   text not null,     -- 'html' | 'plain'; decides decode depth
+  source_variant   text not null,     -- 'html' | 'plain' | 'unknown'; drives a warning only, never parsing
   parser_version   text not null,
   rows_total       integer not null,
   rows_imported    integer not null,

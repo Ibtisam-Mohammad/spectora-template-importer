@@ -65,8 +65,9 @@ The names are being run through an HTML parser and re-serialised on the way out:
 variant appends a closing tag, the Plain variant strips the tag and leaves its surrounding
 whitespace. Only `<` immediately followed by a letter triggers it, since that is what an HTML
 parser treats as a tag; `<50`, `< 50` and `<18 in` are text and pass through. The `</x>` cannot
-be removed safely, because the importer cannot know whether the customer typed it. Report any
-name containing `</` as a warning naming the row.
+be removed safely, because the importer cannot know whether the customer typed it. Store the name
+exactly as exported. This is a stated limitation of the export, not something the importer
+detects.
 
 **Encoding depth differs by export variant, in every text column.** Measured on raw XML:
 
@@ -76,9 +77,22 @@ name containing `</` as a warning naming the row.
 | D Comment Text | `&` double; tags single-encoded, so real markup after XML decode | `&` single; all tags removed |
 | G choices | single | single |
 
-So "decode names one extra time" is correct for the HTML export and **wrong** for the Plain
-export, where a second decode would turn a legitimately typed `&amp;` into `&`. Detect the variant
-first, then choose the decode depth. See `PRESERVATION.md` section 5.
+**One decoding rule works for both variants, with no detection.** After XML parsing, decode
+entities in the name columns exactly once with a **strict** decoder, one that only decodes
+entities terminated by a semicolon (`&amp;`, `&lt;`, `&#39;`). Tested:
+
+| After XML parse | Standard HTML decode | Strict decode |
+| --- | --- | --- |
+| `Siding, Flashing &amp; Trim` (HTML export) | `Siding, Flashing & Trim` | `Siding, Flashing & Trim` |
+| `Siding, Flashing & Trim` (Plain export) | `Siding, Flashing & Trim` | `Siding, Flashing & Trim` |
+| `Heat &not working` (typed) | `Heat ¬ working` **corrupted** | `Heat &not working` |
+| `Smith&copy Co` (typed) | `Smith© Co` **corrupted** | `Smith&copy Co` |
+
+A standard decoder expands legacy entities with no semicolon, so it silently rewrites text a
+customer typed. The strict one does not, and it is a no-op on the Plain export, so the parser
+needs no variant branch. `Comment Text` is not decoded at all; it is HTML and is rendered as
+HTML. In a TypeScript stack, the `entities` package provides a strict decoding mode; no regex
+needed.
 
 ### C — `Comment Name`
 The label shown in Spectora's comment list. Plain text. 100% filled, 334 distinct. Repeats are
@@ -134,8 +148,9 @@ destroyed on entry. There is no escape syntax and the UI offers no way to enter 
 
 Two consequences. `split(',')` on column G is correct, not a guess. And this is a **data-entry
 trap in Spectora itself**: an inspector typing a thousands separator silently gets two wrong
-choices, and the export faithfully carries the damage. Worth surfacing in the import report as an
-observation, not an error, when a choice list contains a bare numeric fragment.
+choices, and the export faithfully carries the damage. The importer cannot tell a damaged
+choice from a real one, so it stores what it gets; this is a limitation to state in NOTES.md,
+not a pattern to detect.
 
 Quotes survive intact: `He said "no"` round-tripped through the UI unchanged.
 → Maps to `comment.choices[]`. Split on comma, trim. Values can contain `&`, quotes and
@@ -174,9 +189,9 @@ scrolls well beyond those: it is a full trade directory.
 | *(system default)* | `pro` |
 
 First word for two, both words concatenated for the third. There is no rule. **Derive nothing,
-store the slug verbatim, treat the vocabulary as open.** A slug-to-label table is a display
-convenience seeded from observed values, never a precondition, and an unknown slug displays as
-itself.
+store the slug verbatim, treat the vocabulary as open, and display it as it is.** No lookup
+table: one built from the slugs seen so far would be a list of this account's choices, not
+Spectora's.
 
 **`pro` is a system default applied to every non-deficiency comment.** Every Informational and
 Limitation probe comment carries `pro`, although their dialogs show no Recommendation control.

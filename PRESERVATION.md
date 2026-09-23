@@ -155,7 +155,7 @@ faithful, and its absence is a render-coverage gap to report, not to hide.
 **Two video structures exist.** Froala emits `<span class="fr-video"><iframe ...></span>` and
 the export preserves it intact, confirmed by round trip. The stock template's empty
 `<div class="youtube-embed-wrapper">` is an older, different structure that arrived empty. Both
-must be handled: render the first, placeholder the second.
+are rendered as they arrive. The importer does not recognise either by class name.
 
 Full allowlist after correction:
 
@@ -190,8 +190,8 @@ property survived.** The `<iframe>` is intact. The only changes Spectora made we
 So the empty `youtube-embed-wrapper` divs, one in this template and seven in Room-by-Room, are
 **pre-existing artifacts in the stock template**, most likely a legacy embed format from before
 Froala or a removed video whose wrapper was left behind. The export reproduces them faithfully.
-They still deserve detection and a placeholder at render, because painted literally they are a
-large blank rectangle, but the cause is the template, not the export.
+They render as they arrive, which in this case is blank space; the importer does not special-case
+them by class name, because a rule keyed to one template's markup is overfitting.
 
 **Finding that replaced it: default photos are Spectora-hosted URLs.** The first populated
 `Default Photo 1` observed reads:
@@ -254,8 +254,8 @@ SPECTORA_PLAIN_TEXT  headers match; no tag in any Comment Text; no &amp; in Comm
                      -> accept, warn: "this is the Plain Text export. Spectora removed
                         every link URL, every table structure and all formatting
                         before you downloaded it, and stripped tag-like text from
-                        names. Re-export with Export HTML Text." Then decode names
-                        ONCE (XML only), not twice.
+                        names. Re-export with Export HTML Text." Parsing is
+                        unchanged; the warning is the only difference.
 SPREADSHEET_UNKNOWN  readable spreadsheet, headers do not match
                      -> refuse, list which of the 4 required headers were found
 NOT_A_SPREADSHEET    magic bytes are not a zip / not OOXML
@@ -269,10 +269,11 @@ structure, and all formatting, and it also strips tag-shaped text from section, 
 comment names. Detecting it and saying so is the difference between being blamed and being
 trusted.
 
-**Detection also decides decoding.** The HTML export double-encodes `&` in every text column;
-the Plain export single-encodes it. A parser that always applies one extra HTML decode is
-correct on HTML exports and corrupts a legitimately typed `&amp;` on Plain exports. Detect
-first, then decode to the variant's depth. Record the variant on `import_run`.
+**Detection only changes the message, never the parsing.** The HTML export double-encodes `&`
+and the Plain export single-encodes it, but one strict, semicolon-only entity decode on the name
+columns is correct for both, so the parser has no variant branch; see `COLUMN-MAP.md`, "Name
+columns". Detection is a structural check on the file as a whole, not on any template's names or
+values, and its only output is the warning above. Record the verdict on `import_run`.
 
 A short **supported formats** table in the UI does the rest of the work: Spectora HTML Text
 supported, Spectora Plain Text accepted with a warning, HomeGauge / Palm-Tech / Home Inspector Pro

@@ -97,9 +97,11 @@ at `Default Photo 3 Caption`. The real export emits Photo 4 through 10 as well. 
 strictly to the documented list silently ignores 14 columns.
 
 **Headers carry parenthetical suffixes.** The column is `Comment Type (info, limit, defect)`,
-not `Comment Type`. Normalise before matching. **Use prefix matching only for the four
-identifying headers**, because `Default Value` is a prefix of `Default Value 2` and a prefix
-match picks the wrong column there. Match everything else exact-after-normalise.
+not `Comment Type`. **Match headers exactly against the 42 known strings**, parenthetical
+included. They were byte-identical in every export examined, HTML and Plain. Prefix or pattern
+matching would be guessing; `Default Value` is a prefix of `Default Value 2`, which shows why.
+If Spectora ever changes a header, report the unknown and the missing header by name and stop,
+rather than map a column by resemblance.
 
 ---
 
