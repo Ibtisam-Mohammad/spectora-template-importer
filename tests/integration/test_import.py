@@ -111,7 +111,9 @@ def test_a_storage_mismatch_rolls_everything_back(conn, monkeypatch, tampering):
 
 @pytest.mark.rule("R1")
 @pytest.mark.parametrize(
-    "data", [b"not a spreadsheet", build_xlsx([["Room", "Finding"], ["Kitchen", "Leak"]])]
+    "data",
+    [b"not a spreadsheet", build_xlsx([["Room", "Finding"], ["Kitchen", "Leak"]])],
+    ids=["not-a-spreadsheet", "other-headers"],
 )
 def test_a_refused_file_leaves_nothing(conn, data):
     with pytest.raises(Refusal):

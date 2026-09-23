@@ -195,7 +195,8 @@ editor:
   field of the tree, read back through the editor's own query, is compared with the parse. A
   mismatch rolls the whole import back.
 - **Re-derivation.** When the report opens, the stored rows are parsed again, without the
-  upload. The result is compared with what was imported.
+  upload. Its counts, rows, sections, items and comments by type, are compared with those
+  recorded at import.
 - **Structure side by side.** The file against what was imported, down to the comment types.
 - **Three coverage numbers.** Cells captured, modelled, and varying data modelled, with the
   ledger for all 42 columns behind them.
@@ -233,7 +234,8 @@ to Spectora to fix something the import could not settle.
   one.
 - **Revert to imported.** An inspector trying things out on four years of work needs a way
   back.
-- **Guidance where it is needed.** A "?" on each heading and field explains it in plain words,
+- **Guidance where it is needed.** A "?" on each pane and comment heading and on most fields
+  explains it in plain words,
   including the ones Spectora's export leaves cryptic, such as the recommendation code `pro`.
   Import notes appear above the items or comments they concern, not only in the report.
 - **Pick lists from the template itself.** Recommendation, location and default unit open a
@@ -261,11 +263,13 @@ AI writing help, no search, no bulk edit (see below).
   are contiguous blocks of rows.
 - **Accepted with a warning:** Spectora's Plain Text export. It is detected from the file and
   imported, and the report says links and formatting were lost before the file was downloaded.
-- **Refused, nothing stored:** anything that is not a spreadsheet, and spreadsheets without
-  Section Name and Item Name columns. The refusal lists the header differences.
-- **Tolerated and reported:** unknown or missing columns, extra sheets, blank rows, values
-  Spectora does not document, and unusual combinations. Nothing is refused for those, and
-  nothing is dropped.
+- **Refused, nothing stored:** anything that is not an `.xlsx`-format workbook, CSV files and
+  old binary `.xls` files included, and workbooks missing a Section Name or an Item Name
+  column. The refusal lists the header differences.
+- **Tolerated and reported:** unknown or missing columns, blank rows, values Spectora does not
+  document, and unusual combinations. Nothing is refused for those, and every cell of the sheet
+  is kept with the import.
+- **Warned about, not read:** sheets after the first. The warning names them.
 - **Size:** up to 4 MB per upload. The largest export seen is 183 KB, with 1,248 comments.
 
 The rules behind all of this are in `docs/rules.md`. The measurements they rest on are in
@@ -275,9 +279,9 @@ The rules behind all of this are in `docs/rules.md`. The measurements they rest 
 
 ## Formatting, links and rich content
 
-**Stored exactly.** Comment Text is stored byte for byte as it comes out of the file. It is
-never decoded, trimmed or cleaned at import, so no display decision can damage it, and every
-one can be changed later without re-importing.
+**Stored exactly.** Comment Text is stored exactly as the spreadsheet's XML reader returns it.
+It is never entity-decoded, trimmed or cleaned at import, so no display decision can damage
+it, and every one can be changed later without re-importing.
 
 **Displayed safely.** HTML from an uploaded file is untrusted, so it is sanitised when it is
 displayed, with nh3. The policy allows everything Spectora's editor (Froala) produces:
@@ -288,9 +292,11 @@ displayed, with nh3. The policy allows everything Spectora's editor (Froala) pro
 - images, and YouTube or Vimeo embeds;
 - Froala's table classes, styled by a small shim stylesheet.
 
-It removes only what can run code or escape the comment's box. That means scripts, event
-handlers, forms, frames from other hosts, `javascript:` links, and CSS such as `position`.
-Every link opens with `rel="noopener noreferrer"`.
+It is an allowlist: it keeps what Froala writes and holds back everything else. That covers
+everything that can run code or escape the comment's box: scripts, event handlers, forms,
+frames from other hosts, `javascript:` links, and CSS such as `position`. It also covers
+harmless markup that is simply not on the list, such as `align` or `data-*` attributes. Every
+link opens with `rel="noopener noreferrer"`.
 
 A golden test holds the policy to the HTML of a comment written with every control in
 Spectora's editor.
@@ -395,8 +401,8 @@ not, it waited.
 
 **Preservation.**
 
-- `tools/verify_claims.py` re-asserts 75 measured facts about the probe export. The same
-  facts are unit tests.
+- `tools/verify_claims.py` re-asserts 75 measured facts about the probe export. Many of the
+  same facts are also unit tests.
 - Every import is verified before it commits: every source row cell for cell, and the tree
   read back through the editor's query field for field. Five tests tamper with a different
   stored table mid-import and confirm the import rolls back and leaves nothing.
@@ -407,7 +413,8 @@ not, it waited.
   modelled.
 
 **A different export.** Four stock templates were sealed, unopened, before the parser
-existed. Their hashes were recorded at the time. They were run once at the end:
+existed. Their hashes were recorded at the time. They were run once, blind, after the
+parser was finished, and again after the two fixes below:
 
 - All four imported and verified, up to 1,248 comments.
 - The run found two general gaps: Spectora-hosted images inside comment text, and `float`.
@@ -419,7 +426,8 @@ A test fails if any string in the format core matches a name or value from the f
 the parser cannot quietly learn one template.
 
 **Saved edits.** Integration tests make every kind of edit through the service and the web
-routes, then read it back on a new connection. They also check two things:
+routes, then read it back. Renames, adds, deletes, section and item moves and text edits are
+read on a new connection, which proves they were committed. They also check two things:
 
 - saving an untouched form leaves the comment byte-identical;
 - edits run the import's checks without being blocked.
@@ -444,8 +452,9 @@ original exactly.
 - A database error mid-import leaves nothing behind.
 - An upload over 4 MB gets a clear message.
 
-**Totals.** 286 tests pass with a database and the holdout. 193 run without a database. All 59
-rules in `docs/rules.md` are covered; `docs/rules-status.md` is the last full run.
+**Totals.** 293 tests pass with a database and the holdout: 193 unit, 80 integration and 20
+holdout. Without a database, the 193 unit tests run. All 59 rules in `docs/rules.md` are
+covered; `docs/rules-status.md` is the last full run.
 
 ---
 
@@ -461,7 +470,8 @@ What kept the output honest:
 - **Rule zero, enforced by a test.** Know the format, never the template.
 - **Probe exports.** I made exports in Spectora specifically to settle open questions,
   instead of assuming.
-- **The sealed holdout.** Four templates the tools never saw until the parser was finished.
+- **The sealed holdout.** Four templates sealed before the parser existed, and run blind once
+  it was finished. One had been seen before as an outside copy, as its README says.
 
 The analysis scripts in `tools/` are part of the repo for that reason.
 
@@ -477,7 +487,8 @@ TODO: approximate hours for exploration, analysis, building, deployment and the 
 
 **Libraries used, not modified:**
 
-- FastAPI and Starlette, Jinja2, htmx, and TinyMCE (GPL build, from jsDelivr);
+- FastAPI with Starlette and pydantic, uvicorn, python-multipart, Jinja2, htmx, and TinyMCE
+  (GPL build, from jsDelivr);
 - psycopg and psycopg-pool, defusedxml, nh3 (the Rust ammonia sanitiser), and httpx;
 - pytest, ruff, uv, and Playwright for the browser check.
 

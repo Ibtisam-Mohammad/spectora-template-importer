@@ -41,7 +41,7 @@ def file_issues(workbook: Workbook, columns: ColumnMap, detection: Detection) ->
                 IssueKind.UNKNOWN_HEADER,
                 Severity.WARNING,
                 f"Column {column}, '{header}', is not a Spectora column. Its values are kept in "
-                "the source rows but not shown in the editor.",
+                "the source rows and shown on each comment, under its row in the file.",
                 column=column,
             )
         )

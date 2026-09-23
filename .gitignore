@@ -37,3 +37,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+
+# Kept locally, not published: the assignment brief is Hive's, and the research is not part of the deliverable.
+docs/assignment/
+docs/research/

@@ -25,7 +25,7 @@ its contents, and it came from Spectora's UI, not from the file.
 
 ## The run, 23 September 2026
 
-Run once, after the parser, importer, report and editor were finished (parser version 1), with
+Run once, after the parser, importer and template report were finished (parser version 1), with
 `python -m app.cli parse` on each file and `pytest --holdout` against a test database. The
 hashes above were checked first and all four matched.
 
@@ -34,12 +34,17 @@ the analysis used a copy of the same stock template from outside this repository
 `docs/format/eda-findings.md`), so its size was known in advance. It is still a check that the
 parser reproduces those numbers from our own export.
 
-| File | Verdict | Sections | Items | Comments | Deficiency / Info / Limit | Import notes |
+| File | Verdict | Sections | Items | Comments | Deficiency / Info / Limit | Parse notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `tpl-gromicko.xls` | HTML | 17 | 133 | 1,248 | 921 / 215 / 112 | 73 order ties |
 | `tpl-radon.xls` | HTML | 2 | 3 | 10 | 0 / 10 / 0 | 3 order ties |
 | `tpl-room-by-room.xls` | HTML | 22 | 136 | 798 | 661 / 114 / 23 | 120 order ties |
 | `tpl-trec.xls` | HTML | 7 | 42 | 218 | 141 / 70 / 7 | 1 invariant |
+
+The notes column counts what the parse reports. A full import adds more: markup kept but not
+displayed (Gromicko 1, Room-by-Room 7, TREC 1), a photo note when photo storage is not
+configured, and,
+since rule PH3, Gromicko's 13 images inside comment text.
 
 **What held.**
 

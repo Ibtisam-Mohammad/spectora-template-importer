@@ -2,14 +2,20 @@
 
 Take-home for Hive Inspect. Upload a Spectora **Export HTML Text** spreadsheet, get a structured
 template you can browse, edit and duplicate, with a report of exactly what was imported and
-what was not. The brief is in `docs/assignment/`; decisions and limits are in `NOTES.md`.
+what was not. Decisions and limits are in `NOTES.md`.
 
-**Live app:** https://spectora-template-importer-mu.vercel.app. There is no login.
+**Live app, opened on the seeded template:**
+https://spectora-template-importer-mu.vercel.app/t/e3eabef9-0cdd-4c09-aef3-bd8e46e569d4
 
-- The seeded InterNACHI Residential template:
-  https://spectora-template-importer-mu.vercel.app/t/e3eabef9-0cdd-4c09-aef3-bd8e46e569d4
 - Its template report, covering what happened during the import:
   https://spectora-template-importer-mu.vercel.app/runs/c2e444de-ebbd-49bc-82a0-02c7cd52cfdd
+- The library, with the upload form: https://spectora-template-importer-mu.vercel.app
+- There is no login.
+
+**The input file.** InterNACHI Residential, loaded from Spectora's Template Center and
+exported with Export to spreadsheet, then Export HTML Text, on 22 September 2026. It is
+`fixtures/spectora/internachi-residential-2026-09-22.xls`; its provenance, and the other
+exports used, are in `fixtures/spectora/README.md`.
 
 ## Stack
 
@@ -67,27 +73,31 @@ uv run --env-file .env python -m app.cli import <file.xls>         # import from
 uv run pytest                                              # unit tests, no database
 TEST_DATABASE_URL=postgresql://... uv run pytest           # plus the integration tests
 TEST_DATABASE_URL=postgresql://... uv run pytest --holdout # plus the four held-out templates
-uv run pytest --rules-report                               # rewrites docs/rules-status.md
+TEST_DATABASE_URL=postgresql://... uv run pytest --holdout --rules-report  # rewrites docs/rules-status.md
 uv run ruff check . && uv run ruff format --check .
 ```
 
-Every format rule in `docs/rules.md` is tagged on the tests that check it, and pytest prints a
-per-rule summary. `docs/rules-status.md` is the last full run.
+Every rule in `docs/rules.md` is tagged on the tests that check it. pytest ends with a
+one-line rule tally, and `--rules-report` writes the per-rule table to `docs/rules-status.md`.
+Run it with a database and `--holdout`, or the rules those tests cover show as skipped.
+`docs/rules-status.md` is the last full run.
 
 The comment editor's "send the text only if it changed" rule runs in the browser, so it has
-its own check, driven through Edge or Chrome with Playwright:
+its own check, driven through Edge or Chrome with Playwright. It needs the app running and the
+rich-comment export (`fixtures/spectora/internachi-residential-rich-comment.xls`) imported. It
+edits one comment and then reverts it, so the comment ends as imported:
 
 ```
-uv run --with playwright python tools/browser_check.py http://127.0.0.1:8000
+uv run --env-file .env --with playwright python tools/browser_check.py http://127.0.0.1:8000
 ```
 
 ## Deploy
 
 1. Create a Supabase project, in us-east-1 to sit next to Vercel's default region.
 2. Run `migrate` and `seed` against it from your machine, as above.
-3. Import the repository into Vercel. It detects FastAPI; `pyproject.toml` names the
-   entrypoint `app.main:app`, and `vercel.json` keeps fixtures, docs and tests out of the
-   function.
+3. Import the repository into Vercel. It detects FastAPI and finds `app` in `app/main.py`
+   (`pyproject.toml` also names it under `[tool.vercel]`). `vercel.json` keeps fixtures, docs
+   and tests out of the function.
 4. Set `DATABASE_URL`, `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in the Vercel project, and
    deploy. Preview deployments sit behind Vercel's login, so review the production URL.
 
@@ -103,7 +113,8 @@ app/
   render.py     the display policy for comment HTML (nh3). Pure.
   db/           SQL, one module per concern: imports, templates, editing, copying, runs
   services/     import, photos, editing, reporting; they own the transactions
-  web/          routes, Jinja templates and static files; no SQL, no parsing
+  web/          routes, Jinja templates and static files; no SQL, and format rules only
+                through app/spectora
   cli.py        parse, migrate, import, seed
 supabase/migrations/   the schema
 tests/
@@ -123,4 +134,5 @@ tools/          the analysis scripts and the browser check
 ```
 
 The analysis scripts in `tools/` need only the Python standard library, for example
-`python tools/verify_claims.py fixtures/spectora/probe-html.xls`.
+`python tools/verify_claims.py fixtures/spectora/probe-html.xls`. The exception is
+`browser_check.py`, which runs as shown above.

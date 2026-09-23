@@ -122,7 +122,7 @@ Each rule gives its evidence and the module that implements it.
 - **H3** An iframe keeps its `src` only when the host is YouTube, youtube-nocookie or Vimeo. Any other iframe is neutralised and counted.
   Evidence: `docs/design/preservation.md` §4. Module: `app/render.py`.
 - **H4** Every link is rendered with `rel="noopener noreferrer"`.
-  Evidence: 43 stock links set `target` and none set `rel`. Module: `app/render.py`.
+  Evidence: of the 43 stock links, 39 set `target` and none set `rel`. Module: `app/render.py`.
 - **H5** Classes are kept, and Froala's table and video classes render through a shim stylesheet.
   Evidence: `docs/design/preservation.md` §4; `fr-alternate-rows` and `fr-dashed-borders` carry visual meaning. Module: `app/render.py`, `app/web/static/froala-shim.css`.
 - **H6** Report the markup inventory of an import and what the render policy will neutralise.
