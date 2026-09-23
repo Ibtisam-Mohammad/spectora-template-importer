@@ -8,6 +8,16 @@
     {% else %}
     <p class="empty">None</p>
     {% endfor %}
+    {% if group.key != "other" %}
+    <form class="add-node add-comment" method="post" action="/items/{{ item.id }}/comments"
+          hx-post="/items/{{ item.id }}/comments" hx-target="#comments-pane"
+          hx-select="#comments-pane" hx-select-oob="#items-pane" hx-swap="outerHTML">
+      <input type="hidden" name="comment_type" value="{{ group.key }}">
+      <input name="name" placeholder="New comment" required
+             aria-label="New {{ group.label | lower }} comment name">
+      <button type="submit" class="button small">+ New</button>
+    </form>
+    {% endif %}
   </div>
   {% endfor %}
 </section>

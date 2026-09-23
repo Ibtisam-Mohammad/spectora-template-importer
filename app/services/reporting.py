@@ -16,7 +16,7 @@ from uuid import UUID
 
 import psycopg
 
-from app.db.imports import HEADER_ROW, read_source_rows
+from app.db.imports import read_source_rows
 from app.db.runs import (
     StoredIssue,
     StoredLedgerEntry,
@@ -28,9 +28,9 @@ from app.db.runs import (
 from app.render import is_editor_state, markup_inventory, neutralised
 from app.spectora.analysis import PARSER_VERSION
 from app.spectora.columns import COMMENT_TYPE_LABELS, COMMENT_TYPES, map_columns
-from app.spectora.model import IssueKind, RawRow, Workbook
+from app.spectora.model import IssueKind, Workbook
 from app.spectora.parse import parse
-from app.spectora.workbook import column_index
+from app.spectora.workbook import workbook_from_rows
 
 VERDICT_LABELS = {
     "SPECTORA_HTML": "Spectora export, HTML Text",
@@ -162,7 +162,7 @@ def build_report(conn: psycopg.Connection, run_id: UUID) -> Report | None:
     if run is None:
         return None
     rows = read_source_rows(conn, run_id)
-    workbook = rebuild_workbook(rows)
+    workbook = workbook_from_rows(rows)
     in_file, bodies = _rederive(workbook)
     imported = Structure(
         rows=run.rows_total,
@@ -187,20 +187,6 @@ def build_report(conn: psycopg.Connection, run_id: UUID) -> Report | None:
         issue_groups=group_issues(read_issues(conn, run_id)),
         markup=markup_summary(bodies),
     )
-
-
-def rebuild_workbook(rows: dict[int, dict[str, str | None]]) -> Workbook:
-    """The sheet as the reader produced it, from the stored source rows."""
-    header = tuple(
-        sorted(
-            ((column, text) for column, text in rows.get(HEADER_ROW, {}).items() if text),
-            key=lambda cell: column_index(cell[0]),
-        )
-    )
-    data = tuple(
-        RawRow(number, cells) for number, cells in sorted(rows.items()) if number > HEADER_ROW
-    )
-    return Workbook(sheet_names=(), header=header, rows=data)
 
 
 def _rederive(workbook: Workbook) -> tuple[Structure, list[str]]:

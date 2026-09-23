@@ -1,3 +1,4 @@
+{% from "partials/node_menu.html" import node_menu, add_node %}
 <nav class="pane" id="sections-pane" aria-label="Sections">
   <h2 class="pane-title">Sections</h2>
   {% if template.sections %}
@@ -13,10 +14,12 @@
         {% if issues.get(node.id) %}<span class="dot" title="{{ issues[node.id] | length }} import notes"></span>{% endif %}
         <span class="count">{{ node.items | length }}</span>
       </a>
+      {{ node_menu("section", node) }}
     </li>
     {% endfor %}
   </ul>
   {% else %}
   <p class="empty pane-empty">This template has no sections.</p>
   {% endif %}
+  {{ add_node("/t/" ~ template.id ~ "/sections", "+ Section", "New section name") }}
 </nav>

@@ -8,8 +8,8 @@ from app.services.reporting import (
     coverage,
     group_issues,
     markup_summary,
-    rebuild_workbook,
 )
+from app.spectora.workbook import workbook_from_rows
 from tests.helpers import analysed
 from tests.paths import ANALYSED, KITCHEN_SINK, PRIMARY
 
@@ -18,7 +18,7 @@ from tests.paths import ANALYSED, KITCHEN_SINK, PRIMARY
 @pytest.mark.parametrize("path", ANALYSED, ids=lambda p: p.name)
 def test_the_stored_rows_rebuild_the_sheet_exactly(path):
     workbook = analysed(path).workbook
-    rebuilt = rebuild_workbook(source_rows(analysed(path)))
+    rebuilt = workbook_from_rows(source_rows(analysed(path)))
     assert rebuilt.header == workbook.header
     assert rebuilt.rows == workbook.rows
 

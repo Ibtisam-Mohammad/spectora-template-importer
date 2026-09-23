@@ -18,6 +18,7 @@ from psycopg.types.json import Jsonb
 
 from app.spectora.analysis import PARSER_VERSION, Analysis
 from app.spectora.model import Issue, IssueKind, ParsedComment, Scope
+from app.spectora.workbook import HEADER_ROW
 
 # Comment columns filled from the parse, and the ParsedComment attribute each one takes.
 # Verification reads the same mapping back, so a column left out here is never checked.
@@ -44,8 +45,6 @@ COMMENT_SOURCE_FIELDS: dict[str, str] = {
     "source_last_modified": "last_modified",
     "source_row_number": "row",
 }
-
-HEADER_ROW = 1
 
 
 @dataclass(frozen=True)

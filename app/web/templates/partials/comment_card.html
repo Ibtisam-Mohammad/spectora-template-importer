@@ -1,5 +1,8 @@
 {% set notes = issues.get(comment.id, []) %}
-<details class="comment" id="comment-{{ comment.id }}">
+{% set this_result = result if result and result.comment_id == comment.id else none %}
+{% set card = "#comment-" ~ comment.id %}
+{% set base = "/comments/" ~ comment.id %}
+<details class="comment" id="comment-{{ comment.id }}"{% if comment.id == open_comment %} open{% endif %}>
   <summary>
     <span class="answer">{{ comment.answer_type | answer_label }}</span>
     <span class="comment-name">{{ comment.name or "(no name)" }}</span>
@@ -7,51 +10,107 @@
     <span class="chip severity-{{ comment.category }}">{{ comment.category | category_label }}</span>
     {% endif %}
     {% if notes %}<span class="badge badge-note">{{ notes | length }} import note{{ "s" if notes | length > 1 }}</span>{% endif %}
-    {% if comment.body_edited_at %}<span class="badge">Edited</span>{% endif %}
+    {% if comment.body_edited_at %}<span class="badge" title="Text edited {{ comment.body_edited_at | when }}">Edited</span>{% endif %}
   </summary>
   <div class="comment-detail">
-    {% if comment.body_html %}
-    <div class="comment-body" hx-disable>{{ comment.body_html | comment_html }}</div>
-    {% else %}
-    <p class="empty">No comment text.</p>
+    {% if this_result %}
+    <div class="saved" role="status">
+      {{ this_result.summary }}
+      {% if this_result.warnings %}
+      Spectora's import would flag this comment:
+      <ul>{% for warning in this_result.warnings %}<li>{{ warning.detail }}</li>{% endfor %}</ul>
+      {% endif %}
+    </div>
     {% endif %}
 
-    <dl class="facts">
-      <dt>Answer format</dt>
-      <dd>{{ comment.answer_type | answer_label }}{% if comment.answer_type and comment.answer_type | answer_label == comment.answer_type %} <span class="muted">(not a format Spectora documents)</span>{% endif %}</dd>
-      {% if comment.comment_type not in ("info", "limit", "defect") %}
-      <dt>Comment type</dt><dd>{{ comment.comment_type or "(blank)" }}</dd>
-      {% endif %}
-      {% if comment.choices %}
-      <dt>Choices</dt>
-      <dd class="chips">{% for choice in comment.choices %}<span class="chip">{{ choice }}</span>{% endfor %}</dd>
-      {% endif %}
-      {% if comment.unit_options %}
-      <dt>Units</dt>
-      <dd class="chips">{% for unit in comment.unit_options %}<span class="chip">{{ unit }}</span>{% endfor %}</dd>
-      {% endif %}
-      {% if comment.default_value or comment.default_value_2 %}
-      <dt>Default</dt>
-      <dd>{{ comment.default_value }}{% if comment.default_value_2 %} to {{ comment.default_value_2 }}{% endif %} {{ comment.default_unit_type }}</dd>
-      {% elif comment.default_unit_type %}
-      <dt>Default unit</dt><dd>{{ comment.default_unit_type }}</dd>
-      {% endif %}
-      {% if comment.default_location %}
-      <dt>Location</dt><dd>{{ comment.default_location }}</dd>
-      {% endif %}
-      {% if comment.comment_type == "defect" or comment.category %}
-      <dt>Severity</dt><dd>{{ comment.category | category_label if comment.category else "Not set" }}</dd>
-      {% endif %}
-      {% if comment.recommendation %}
-      <dt>Recommendation</dt><dd>{{ comment.recommendation }}</dd>
-      {% endif %}
-      {% if comment.estimate_min or comment.estimate_max %}
-      <dt>Estimate</dt><dd>{{ comment.estimate_min or "?" }} to {{ comment.estimate_max or "?" }}</dd>
-      {% endif %}
-      {% for label, value in [("Locked", comment.locked), ("Simple format", comment.simple_format), ("Disable photos", comment.disable_photos), ("Uses", comment.uses)] if value %}
-      <dt>{{ label }}</dt><dd>{{ value }}</dd>
-      {% endfor %}
-    </dl>
+    <form class="comment-form" method="post" action="{{ base }}" hx-post="{{ base }}"
+          hx-target="{{ card }}" hx-select="{{ card }}" hx-swap="outerHTML">
+      <div class="body-field">
+        <div class="comment-body" data-rendered hx-disable>
+          {% if comment.body_html %}{{ comment.body_html | comment_html }}{% else %}<p class="empty">No comment text.</p>{% endif %}
+        </div>
+        <textarea id="body-{{ comment.id }}" name="body_html" data-body disabled hidden>{{ comment.body_html }}</textarea>
+        <button type="button" class="link-button" data-edit-body>Edit text</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="wide">Name
+          <input name="name" value="{{ comment.name }}" required>
+        </label>
+        <label>Comment type
+          <select name="comment_type" data-comment-type>
+            {% for value, label in comment_types.items() %}
+            <option value="{{ value }}"{% if value == comment.comment_type %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+            {% if comment.comment_type not in comment_types %}
+            <option value="{{ comment.comment_type }}" selected>{{ comment.comment_type or "(blank)" }} (as imported)</option>
+            {% endif %}
+          </select>
+        </label>
+        <label>Answer format
+          <select name="answer_type" data-answer-format data-known="{{ answer_types.keys() | join(' ') }}">
+            {% if not comment.answer_type %}<option value="" selected>Not set</option>{% endif %}
+            {% for value, label in answer_types.items() %}
+            <option value="{{ value }}"{% if value == comment.answer_type %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+            {% if comment.answer_type and comment.answer_type not in answer_types %}
+            <option value="{{ comment.answer_type }}" selected>{{ comment.answer_type }} (as imported)</option>
+            {% endif %}
+          </select>
+        </label>
+        <label data-formats="checkbox"{% if comment.choices %} data-keep{% endif %}>Answer choices
+          <input name="choices" value="{{ comment.choices | join(', ') }}">
+          <small>Separate choices with commas.</small>
+        </label>
+        <label data-formats="number range"{% if comment.unit_options %} data-keep{% endif %}>Unit type choices
+          <input name="unit_options" value="{{ comment.unit_options | join(', ') }}">
+          <small>Separate units with commas.</small>
+        </label>
+        <label data-formats="boolean number range text"{% if comment.default_value %} data-keep{% endif %}>Default value
+          <input name="default_value" value="{{ comment.default_value }}">
+        </label>
+        <label data-formats="range"{% if comment.default_value_2 %} data-keep{% endif %}>Default value 2
+          <input name="default_value_2" value="{{ comment.default_value_2 }}">
+        </label>
+        <label data-formats="number range"{% if comment.default_unit_type %} data-keep{% endif %}>Default unit
+          <input name="default_unit_type" value="{{ comment.default_unit_type }}">
+        </label>
+        <label data-types="defect"{% if comment.category %} data-keep{% endif %}>Severity
+          <select name="category">
+            <option value=""{% if not comment.category %} selected{% endif %}>Not set</option>
+            {% for value, label in categories.items() %}
+            <option value="{{ value }}"{% if value == comment.category %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+            {% if comment.category and comment.category not in categories %}
+            <option value="{{ comment.category }}" selected>{{ comment.category }} (as imported)</option>
+            {% endif %}
+          </select>
+        </label>
+        <label data-types="defect"{% if comment.recommendation %} data-keep{% endif %}>Recommendation
+          <input name="recommendation" value="{{ comment.recommendation }}">
+        </label>
+        <label class="wide">Location
+          <input name="default_location" value="{{ comment.default_location }}">
+        </label>
+      </div>
+
+      <details class="more-fields">
+        <summary>More fields</summary>
+        <div class="form-grid">
+          <label>Estimate minimum <input name="estimate_min" value="{{ comment.estimate_min }}"></label>
+          <label>Estimate maximum <input name="estimate_max" value="{{ comment.estimate_max }}"></label>
+          <label>Locked <input name="locked" value="{{ comment.locked }}"></label>
+          <label>Simple format <input name="simple_format" value="{{ comment.simple_format }}"></label>
+          <label>Disable photos <input name="disable_photos" value="{{ comment.disable_photos }}"></label>
+          <label>Uses <input name="uses" value="{{ comment.uses }}"></label>
+        </div>
+        <p class="muted">These hold Spectora's values as exported and are kept as text.</p>
+      </details>
+
+      <div class="form-actions">
+        <button type="submit" class="button">Save</button>
+      </div>
+    </form>
 
     {% if comment.photos %}
     <div class="photos">
@@ -70,8 +129,30 @@
     </ul>
     {% endif %}
 
+    <div class="comment-actions">
+      <form method="post" action="{{ base }}/move" hx-post="{{ base }}/move"
+            hx-target="#comments-pane" hx-select="#comments-pane" hx-swap="outerHTML">
+        <button type="submit" name="direction" value="up" class="link-button">Move up</button>
+        <button type="submit" name="direction" value="down" class="link-button">Move down</button>
+      </form>
+      {% if comment.source_row_number and comment.import_run_id %}
+      <form method="post" action="{{ base }}/revert" hx-post="{{ base }}/revert"
+            hx-target="{{ card }}" hx-select="{{ card }}" hx-swap="outerHTML"
+            hx-confirm="Put every field of this comment back as imported from row {{ comment.source_row_number }}?">
+        <button type="submit" class="link-button">Revert to imported</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ base }}/delete" hx-post="{{ base }}/delete"
+            hx-target="#comments-pane" hx-select="#comments-pane" hx-select-oob="#items-pane"
+            hx-swap="outerHTML" hx-confirm="Delete the comment '{{ comment.name }}'?">
+        <button type="submit" class="link-button danger">Delete</button>
+      </form>
+    </div>
+
     {% if comment.source_row_number %}
-    <p class="provenance">Imported from row {{ comment.source_row_number }}{% if comment.source_last_modified %}, last changed in Spectora {{ comment.source_last_modified }}{% endif %}.</p>
+    <p class="provenance">Imported from row {{ comment.source_row_number }}{% if comment.source_last_modified %}, last changed in Spectora {{ comment.source_last_modified }}{% endif %}.{% if comment.body_edited_at %} Text edited here {{ comment.body_edited_at | when }}.{% endif %}</p>
+    {% else %}
+    <p class="provenance">Added in this app.</p>
     {% endif %}
   </div>
 </details>

@@ -1,16 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ template.name }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='froala-shim.css') }}">{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', path='froala-shim.css') }}">
+<script src="{{ url_for('static', path='editor.js') }}" defer
+        data-content-css="{{ url_for('static', path='froala-shim.css') }}"></script>
+{% endblock %}
 {% block body_class %}editor{% endblock %}
 {% block topbar %}
-<span class="template-name">{{ template.name }}</span>
+<form class="template-rename" method="post" action="/t/{{ template.id }}/rename"
+      hx-post="/t/{{ template.id }}/rename" hx-trigger="change" hx-swap="none">
+  <input name="name" value="{{ template.name }}" required aria-label="Template name"
+         title="Click to rename the template">
+</form>
 <nav class="topbar-actions">
   {% if run_id %}<a href="/runs/{{ run_id }}">Import report</a>{% endif %}
   <a href="/">Library</a>
+  <form method="post" action="/t/{{ template.id }}/delete"
+        onsubmit="return confirm('Delete this template? This cannot be undone.')">
+    <button type="submit" class="topbar-button">Delete</button>
+  </form>
 </nav>
 {% endblock %}
 {% block main %}
-<div class="panes">
+<div class="panes" id="panes">
   {% include "partials/sections_pane.html" %}
   {% include "partials/items_pane.html" %}
   {% include "partials/comments_pane.html" %}

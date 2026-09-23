@@ -1,0 +1,29 @@
+{# Rename, move and delete for a section or an item. Every form swaps all three panes. #}
+{% macro node_menu(kind, node) %}
+{% set base = "/" ~ kind ~ "s/" ~ node.id %}
+<details class="node-menu">
+  <summary title="Rename, move or delete" aria-label="Change {{ kind }} {{ node.name }}">&#8942;</summary>
+  <div class="menu" hx-target="#panes" hx-select="#panes" hx-swap="outerHTML">
+    <form method="post" action="{{ base }}/rename" hx-post="{{ base }}/rename" class="menu-rename">
+      <input name="name" value="{{ node.name }}" required aria-label="{{ kind | capitalize }} name">
+      <button type="submit" class="button small">Rename</button>
+    </form>
+    <form method="post" action="{{ base }}/move" hx-post="{{ base }}/move" class="menu-row">
+      <button type="submit" name="direction" value="up" class="link-button">Move up</button>
+      <button type="submit" name="direction" value="down" class="link-button">Move down</button>
+    </form>
+    <form method="post" action="{{ base }}/delete" hx-post="{{ base }}/delete"
+          hx-confirm="Delete the {{ kind }} '{{ node.name }}' and everything in it?">
+      <button type="submit" class="link-button danger">Delete {{ kind }}</button>
+    </form>
+  </div>
+</details>
+{% endmacro %}
+
+{% macro add_node(action, label, placeholder) %}
+<form class="add-node" method="post" action="{{ action }}" hx-post="{{ action }}"
+      hx-target="#panes" hx-select="#panes" hx-swap="outerHTML">
+  <input name="name" placeholder="{{ placeholder }}" required aria-label="{{ placeholder }}">
+  <button type="submit" class="button small">{{ label }}</button>
+</form>
+{% endmacro %}

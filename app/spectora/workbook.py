@@ -7,6 +7,7 @@ F4 (cells by reference), F5 (every string-cell form), F7 (text kept as text).
 import io
 import posixpath
 import zipfile
+from collections.abc import Mapping
 from xml.etree.ElementTree import Element
 
 from defusedxml import ElementTree as SafeXML
@@ -17,6 +18,7 @@ from app.spectora.model import RawRow, Refusal, Verdict, Workbook
 ZIP_SIGNATURE = b"PK\x03\x04"
 MAX_ENTRIES = 500
 MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
+HEADER_ROW = 1
 
 _MAIN = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 _PACKAGE_RELS = "{http://schemas.openxmlformats.org/package/2006/relationships}"
@@ -33,11 +35,23 @@ def read_workbook(data: bytes) -> Workbook:
         shared = _shared_strings(archive, workbook_part, relationships)
         rows = _read_rows(_read_xml(archive, sheets[0][1]), shared)
 
-    header_row = next((row for row in rows if row.number == 1), None)
+    header_row = next((row for row in rows if row.number == HEADER_ROW), None)
     return Workbook(
         sheet_names=tuple(name for name, _ in sheets),
         header=_header(header_row),
-        rows=tuple(row for row in rows if row.number > 1),
+        rows=tuple(row for row in rows if row.number > HEADER_ROW),
+    )
+
+
+def workbook_from_rows(rows: Mapping[int, dict[str, str | None]]) -> Workbook:
+    """A workbook rebuilt from rows kept as {row number: {column letter: text}}, header
+    included. The inverse of storing each RawRow's cells; the sheet names are not kept."""
+    header = RawRow(HEADER_ROW, dict(rows[HEADER_ROW])) if HEADER_ROW in rows else None
+    data = sorted((number, cells) for number, cells in rows.items() if number > HEADER_ROW)
+    return Workbook(
+        sheet_names=(),
+        header=_header(header),
+        rows=tuple(RawRow(number, dict(cells)) for number, cells in data),
     )
 
 

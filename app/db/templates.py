@@ -78,6 +78,21 @@ def read_tree(conn: psycopg.Connection, template_id: UUID) -> StoredTemplate | N
     return StoredTemplate(**template, sections=_sections(rows))
 
 
+def read_comment(conn: psycopg.Connection, comment_id: UUID) -> StoredComment | None:
+    with conn.cursor(row_factory=dict_row) as cursor:
+        rows = cursor.execute(
+            f"select {_COMMENT_SELECT},"
+            " p.id as photo_id, p.position as photo_position, p.source_url as photo_source_url,"
+            " p.caption as photo_caption, p.stored_path as photo_stored_path"
+            " from comment c left join comment_photo p on p.comment_id = c.id"
+            " where c.id = %s order by p.position, p.id",
+            [comment_id],
+        ).fetchall()
+    if not rows:
+        return None
+    return _comment(comment_id, rows[0], [row for row in rows if row["photo_id"] is not None])
+
+
 def _sections(rows: Iterable[dict[str, Any]]) -> tuple[StoredSection, ...]:
     """Fold the joined rows back into nested nodes. Rows arrive in tree order, so each node's
     children follow it; dicts keep that order."""

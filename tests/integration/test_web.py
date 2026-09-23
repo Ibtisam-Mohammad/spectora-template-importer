@@ -87,10 +87,13 @@ def test_comment_bodies_render_sanitised_with_their_formatting(client, conn):
     rich = next(c for c in tree.comments() if "<table" in c.body_html)
     section, item = next((s, i) for s in tree.sections for i in s.items if rich in i.comments)
     page = client.get(f"/t/{tree.id}?section={section.id}&item={item.id}").text
-    assert 'class="comment-body" hx-disable' in page
-    assert "player.vimeo.com" in page
-    assert "fr-dashed-borders" in page or "<table" in page
-    assert "contenteditable" not in page
+    card = page.split(f'id="comment-{rich.id}"', 1)[1]
+    rendered = card.split("data-rendered hx-disable>", 1)[1].split("<textarea", 1)[0]
+    assert 'src="https://player.vimeo.com/' in rendered
+    assert '<table class="fr-dashed-borders' in rendered
+    assert "contenteditable" not in rendered
+    stored = card.split("<textarea", 1)[1].split("</textarea>", 1)[0]
+    assert "contenteditable" in stored, "the editor gets the body as stored"
 
 
 def test_import_notes_are_shown_on_the_nodes_they_concern(client, conn):

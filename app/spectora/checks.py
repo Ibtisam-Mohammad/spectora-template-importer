@@ -1,20 +1,26 @@
-"""Checks that look at the whole file or the whole tree, rather than one row.
+"""Checks on the whole file, the whole tree, or one comment. They report; they never change.
 
-Rules: F3 (more than one sheet), F6 (header issues), D1 (Plain Text warning),
-V4 (invariants reported, never enforced), S6 (merged same-named sections).
+Rules: F3 (more than one sheet), F6 (header issues), D1 (Plain Text warning), V1 to V3 (values
+Spectora does not document), V4 (invariants reported, never enforced), S6 (merged same-named
+sections), E5 (edits get the same comment checks as import).
 """
 
+from app.spectora.columns import ANSWER_TYPE_LABELS, CATEGORY_LABELS, COMMENT_TYPES
 from app.spectora.model import (
     ColumnMap,
     Detection,
     Issue,
     IssueKind,
+    ParsedComment,
     ParsedTemplate,
     Scope,
     Severity,
     Verdict,
     Workbook,
 )
+
+# For checking a comment that did not come from a file, such as one being edited.
+NO_COLUMNS = ColumnMap(fields={})
 
 
 def file_issues(workbook: Workbook, columns: ColumnMap, detection: Detection) -> list[Issue]:
@@ -69,45 +75,77 @@ def tree_issues(template: ParsedTemplate, columns: ColumnMap) -> list[Issue]:
     return [*_invariant_issues(template, columns), *_merged_section_issues(template, columns)]
 
 
-def _invariant_issues(template: ParsedTemplate, columns: ColumnMap) -> list[Issue]:
-    """Two relationships held on every row of every export examined. Reported, never enforced."""
+def comment_issues(comment: ParsedComment, columns: ColumnMap = NO_COLUMNS) -> list[Issue]:
+    """Everything the import checks on a single comment."""
+    return [*value_issues(comment, columns), *invariant_issues(comment, columns)]
+
+
+def value_issues(comment: ParsedComment, columns: ColumnMap = NO_COLUMNS) -> list[Issue]:
+    """Values outside what the header documents. They are kept exactly as they arrived."""
+    checks = (
+        ("comment_type", comment.comment_type, COMMENT_TYPES, "Comment Type"),
+        ("answer_type", comment.answer_type, ANSWER_TYPE_LABELS, "Answer Type"),
+        ("category", comment.category, CATEGORY_LABELS, "Category"),
+    )
     issues = []
-    for comment in template.comments():
-        is_defect = comment.comment_type == "defect"
-        if bool(comment.category) != is_defect:
-            detail = (
-                f"Deficiency '{comment.name}' has no Category."
-                if is_defect
-                else f"'{comment.name}' has a Category, which Spectora sets only on deficiencies."
-            )
+    for field_name, value, known, label in checks:
+        if value and value not in known:
             issues.append(
                 Issue(
-                    IssueKind.INVARIANT_VIOLATED,
+                    IssueKind.UNEXPECTED_VALUE,
                     Severity.WARNING,
-                    detail,
+                    f"{label} '{value}' on comment '{comment.name}' is not one Spectora "
+                    "documents. It was imported as written.",
                     Scope.COMMENT,
                     comment.row,
-                    columns.letter("category"),
-                )
-            )
-        is_multiple_choice = comment.answer_type == "checkbox"
-        if bool(comment.choices) != is_multiple_choice:
-            detail = (
-                f"Multiple-choice comment '{comment.name}' has no answer choices."
-                if is_multiple_choice
-                else f"'{comment.name}' has answer choices but is not a multiple-choice comment."
-            )
-            issues.append(
-                Issue(
-                    IssueKind.INVARIANT_VIOLATED,
-                    Severity.WARNING,
-                    detail,
-                    Scope.COMMENT,
-                    comment.row,
-                    columns.letter("choices"),
+                    columns.letter(field_name),
                 )
             )
     return issues
+
+
+def invariant_issues(comment: ParsedComment, columns: ColumnMap = NO_COLUMNS) -> list[Issue]:
+    """Two relationships held on every row of every export examined. Reported, never enforced."""
+    issues = []
+    is_defect = comment.comment_type == "defect"
+    if bool(comment.category) != is_defect:
+        detail = (
+            f"Deficiency '{comment.name}' has no Category."
+            if is_defect
+            else f"'{comment.name}' has a Category, which Spectora sets only on deficiencies."
+        )
+        issues.append(
+            Issue(
+                IssueKind.INVARIANT_VIOLATED,
+                Severity.WARNING,
+                detail,
+                Scope.COMMENT,
+                comment.row,
+                columns.letter("category"),
+            )
+        )
+    is_multiple_choice = comment.answer_type == "checkbox"
+    if bool(comment.choices) != is_multiple_choice:
+        detail = (
+            f"Multiple-choice comment '{comment.name}' has no answer choices."
+            if is_multiple_choice
+            else f"'{comment.name}' has answer choices but is not a multiple-choice comment."
+        )
+        issues.append(
+            Issue(
+                IssueKind.INVARIANT_VIOLATED,
+                Severity.WARNING,
+                detail,
+                Scope.COMMENT,
+                comment.row,
+                columns.letter("choices"),
+            )
+        )
+    return issues
+
+
+def _invariant_issues(template: ParsedTemplate, columns: ColumnMap) -> list[Issue]:
+    return [issue for c in template.comments() for issue in invariant_issues(c, columns)]
 
 
 def _merged_section_issues(template: ParsedTemplate, columns: ColumnMap) -> list[Issue]:

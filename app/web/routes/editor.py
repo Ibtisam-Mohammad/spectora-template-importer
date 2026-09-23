@@ -1,21 +1,28 @@
 """The template editor: three panes, sections | items | comments, like Spectora's own.
 
-Every request renders the whole page. Links in the panes carry htmx attributes that swap only
-the panes to their right, so a click keeps the scroll position of the pane it was made in, and
-the same URL loaded directly, or restored from history, renders the same page.
+Every request renders the whole page. Links and forms in the panes carry htmx attributes that
+swap only the parts that changed, so a click keeps the scroll position of the pane it was made
+in, and the same URL loaded directly, or restored from history, renders the same page.
 """
 
 from dataclasses import dataclass
 from typing import Annotated
+from urllib.parse import urlencode
 from uuid import UUID
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.db.records import StoredComment, StoredItem
 from app.db.templates import issues_by_node, latest_run_id, read_tree
-from app.spectora.columns import COMMENT_TYPE_LABELS, COMMENT_TYPES
+from app.services.editing import CommentResult
+from app.spectora.columns import (
+    ANSWER_TYPE_LABELS,
+    CATEGORY_LABELS,
+    COMMENT_TYPE_LABELS,
+    COMMENT_TYPES,
+)
 from app.web.database import db
 from app.web.templating import templates
 
@@ -37,23 +44,58 @@ def editor_page(
     section: UUID | None = None,
     item: UUID | None = None,
 ) -> Response:
+    return render_editor(request, conn, template_id, section, item)
+
+
+def editor_url(
+    template_id: UUID, section_id: UUID | None = None, item_id: UUID | None = None
+) -> str:
+    query = {key: value for key, value in (("section", section_id), ("item", item_id)) if value}
+    return f"/t/{template_id}" + (f"?{urlencode(query)}" if query else "")
+
+
+def render_editor(
+    request: Request,
+    conn: psycopg.Connection,
+    template_id: UUID,
+    section_id: UUID | None = None,
+    item_id: UUID | None = None,
+    open_comment: UUID | None = None,
+    result: CommentResult | None = None,
+) -> Response:
+    """The editor for one selection. After an edit made with htmx, the browser's address is set
+    to that selection; after an edit made without it, the browser is sent there."""
     tree = read_tree(conn, template_id)
     if tree is None:
         raise HTTPException(404, "There is no template at this address.")
-    selected_section = _selected(tree.sections, section)
-    selected_item = _selected(selected_section.items, item) if selected_section else None
-    return templates.TemplateResponse(
+    section = _selected(tree.sections, section_id)
+    item = _selected(section.items, item_id) if section else None
+    url = editor_url(tree.id, section.id if section else None, item.id if item else None)
+    if result is not None:
+        open_comment = result.comment_id
+    if request.method != "GET" and "hx-request" not in request.headers:
+        anchor = f"#comment-{open_comment}" if open_comment else ""
+        return RedirectResponse(url + anchor, status_code=303)
+    response = templates.TemplateResponse(
         request,
         "editor.html",
         {
             "template": tree,
-            "section": selected_section,
-            "item": selected_item,
-            "groups": comment_groups(selected_item) if selected_item else [],
+            "section": section,
+            "item": item,
+            "groups": comment_groups(item) if item else [],
             "issues": issues_by_node(conn, template_id),
             "run_id": latest_run_id(conn, template_id),
+            "open_comment": open_comment,
+            "result": result,
+            "comment_types": COMMENT_TYPE_LABELS,
+            "answer_types": ANSWER_TYPE_LABELS,
+            "categories": CATEGORY_LABELS,
         },
     )
+    if request.method != "GET":
+        response.headers["HX-Push-Url"] = url
+    return response
 
 
 def _selected[Node](nodes: tuple[Node, ...], wanted: UUID | None) -> Node | None:

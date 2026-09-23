@@ -11,14 +11,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import PureWindowsPath
 
-from app.spectora.columns import (
-    ANSWER_TYPE_LABELS,
-    CATEGORY_LABELS,
-    COMMENT_TYPES,
-    PHOTO_SLOTS,
-    decode_name,
-    split_list,
-)
+from app.spectora.checks import value_issues
+from app.spectora.columns import COMMENT_TYPES, PHOTO_SLOTS, decode_name, split_list
 from app.spectora.model import (
     ColumnMap,
     Issue,
@@ -102,7 +96,7 @@ class _TreeBuilder:
             self._item_key = item_text
         comment = _comment(row, self.columns)
         section.items[-1].comments.append(comment)
-        self.issues.extend(_value_issues(comment, self.columns))
+        self.issues.extend(value_issues(comment, self.columns))
 
     def _skip(self, row: RawRow, section_text: str) -> None:
         missing = "Item Name" if section_text.strip() else "Section Name"
@@ -158,30 +152,6 @@ def _photos(row: RawRow, columns: ColumnMap) -> tuple[ParsedPhoto, ...]:
         if url or caption:
             photos.append(ParsedPhoto(slot, url, caption))
     return tuple(photos)
-
-
-def _value_issues(comment: ParsedComment, columns: ColumnMap) -> list[Issue]:
-    """Values outside what the header documents. They are kept exactly as they arrived."""
-    checks = (
-        ("comment_type", comment.comment_type, COMMENT_TYPES, "Comment Type"),
-        ("answer_type", comment.answer_type, ANSWER_TYPE_LABELS, "Answer Type"),
-        ("category", comment.category, CATEGORY_LABELS, "Category"),
-    )
-    issues = []
-    for field_name, value, known, label in checks:
-        if value and value not in known:
-            issues.append(
-                Issue(
-                    IssueKind.UNEXPECTED_VALUE,
-                    Severity.WARNING,
-                    f"{label} '{value}' on comment '{comment.name}' is not one Spectora "
-                    "documents. It was imported as written.",
-                    Scope.COMMENT,
-                    comment.row,
-                    columns.letter(field_name),
-                )
-            )
-    return issues
 
 
 # ---------------------------------------------------------------- ordering
