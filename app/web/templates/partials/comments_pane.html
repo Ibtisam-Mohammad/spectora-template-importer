@@ -1,8 +1,12 @@
+{% from "partials/help.html" import help, tip, pane_notes %}
 <section class="pane pane-comments" id="comments-pane" aria-label="Comments">
-  <h2 class="pane-title">Comments{% if item %}<span class="pane-context">{{ item.name }}</span>{% endif %}</h2>
+  <h2 class="pane-title">Comments {{ tip(help.comments) }}{% if item %}<span class="pane-context">{{ item.name }}</span>{% endif %}</h2>
+  {% if item %}
+  {{ pane_notes(issues.get(item.id, []) | selectattr("scope", "equalto", "item") | list, run_id) }}
+  {% endif %}
   {% for group in groups %}
-  <div class="group">
-    <h3 class="group-title">{{ group.label }} <span class="count">{{ group.comments | length }}</span></h3>
+  <div class="group group-{{ group.key }}">
+    <h3 class="group-title">{{ group.label }} <span class="count">{{ group.comments | length }}</span> {{ tip(help[group.key]) }}</h3>
     {% for comment in group.comments %}
     {% include "partials/comment_card.html" %}
     {% else %}

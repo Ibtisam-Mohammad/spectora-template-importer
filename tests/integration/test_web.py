@@ -190,3 +190,31 @@ def test_the_plain_text_export_is_flagged_first(client):
 def test_an_unknown_report_is_not_found(client):
     response = client.get("/runs/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404
+
+
+def test_an_items_own_notes_are_listed_above_its_comments(client, conn):
+    tree = imported(client, conn, PRIMARY)
+    notes = conn.execute("select item_id, detail from import_issue where scope = 'item'").fetchall()
+    item_id, detail = notes[0]
+    section = next(s for s in tree.sections if any(i.id == item_id for i in s.items))
+    page = client.get(f"/t/{tree.id}?section={section.id}&item={item_id}").text
+    comments_pane = page.split('id="comments-pane"', 1)[1]
+    box = comments_pane.split('class="pane-notes"', 1)[1].split("</div>", 1)[0]
+    assert detail in html_unescape(box)
+    assert "See the import report" in box
+
+
+def test_a_sections_own_notes_are_listed_above_its_items(client, conn):
+    tree = imported(client, conn, PROBE_DUPLICATE)
+    merged = next(s for s in tree.sections if s.name == "ZZ Dup")
+    page = client.get(f"/t/{tree.id}?section={merged.id}").text
+    items_pane = page.split('id="items-pane"', 1)[1].split('id="comments-pane"', 1)[0]
+    assert 'class="pane-notes"' in items_pane
+    assert "each appear more than once" in items_pane
+
+
+def test_headings_and_fields_carry_guidance(client, conn):
+    tree = imported(client, conn, PRIMARY)
+    page = client.get(f"/t/{tree.id}").text
+    assert page.count('class="tip"') >= 4
+    assert "The export has these codes, not the names Spectora shows." in page

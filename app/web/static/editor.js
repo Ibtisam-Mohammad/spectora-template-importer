@@ -139,4 +139,11 @@
     forms.push(...(root.querySelectorAll?.("form.comment-form") ?? []));
     forms.forEach(showFields);
   });
+
+  // After the comments pane is replaced (a comment moved to another heading, was added, or was
+  // reordered), bring the open comment into view.
+  document.addEventListener("htmx:afterSettle", (event) => {
+    if (event.detail.target?.id !== "comments-pane") return;
+    document.querySelector("#comments-pane details.comment[open]")?.scrollIntoView({ block: "nearest" });
+  });
 })();

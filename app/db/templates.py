@@ -179,7 +179,7 @@ def issues_by_node(conn: psycopg.Connection, template_id: UUID) -> dict[UUID, li
     the comment, its item and its section."""
     rows = conn.execute(
         "select i.section_id, i.item_id, i.comment_id, i.kind, i.severity, i.detail,"
-        " i.row_number, i.column_letter"
+        " i.row_number, i.column_letter, i.scope"
         " from import_issue i join section s on s.id = i.section_id"
         " where s.template_id = %s order by i.import_run_id, i.position",
         [template_id],

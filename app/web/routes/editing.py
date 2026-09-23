@@ -36,7 +36,7 @@ def _found[T](value: T | None) -> T:
 def _show(
     request: Request, conn: psycopg.Connection, path: NodePath, result: CommentResult | None = None
 ) -> Response:
-    return render_editor(
+    response = render_editor(
         request,
         conn,
         path.template_id,
@@ -44,6 +44,12 @@ def _show(
         path.item_id,
         result=result,
     )
+    if result is not None and "comment_type" in result.changed:
+        # The comment now belongs under another heading: swap the pane, not just the card.
+        response.headers["HX-Retarget"] = "#comments-pane"
+        response.headers["HX-Reselect"] = "#comments-pane"
+        response.headers["HX-Reswap"] = "outerHTML"
+    return response
 
 
 # ---------------------------------------------------------------- template

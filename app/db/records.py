@@ -100,3 +100,5 @@ class NodeIssue:
     detail: str
     row_number: int | None
     column_letter: str | None
+    scope: str
+    """file, section, item or comment: which node the note is about."""

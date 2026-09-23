@@ -12,7 +12,13 @@ from dataclasses import dataclass, field
 from pathlib import PureWindowsPath
 
 from app.spectora.checks import value_issues
-from app.spectora.columns import COMMENT_TYPES, PHOTO_SLOTS, decode_name, split_list
+from app.spectora.columns import (
+    COMMENT_TYPE_LABELS,
+    COMMENT_TYPES,
+    PHOTO_SLOTS,
+    decode_name,
+    split_list,
+)
 from app.spectora.model import (
     ColumnMap,
     Issue,
@@ -193,12 +199,14 @@ def _ambiguous_order(
     )
     shared = sorted({comment_type for (comment_type, _), count in groups.items() if count > 1})
     for comment_type in shared:
+        group = COMMENT_TYPE_LABELS.get(comment_type, comment_type or "untyped")
         issues.append(
             Issue(
                 IssueKind.AMBIGUOUS_ORDER,
                 Severity.INFO,
-                f"In '{section_name} / {item.name}', some {comment_type or 'untyped'} comments "
-                "share an Order value, so their order follows the file.",
+                f"In '{section_name} / {item.name}', some {group} comments share the same "
+                "Order value in the file, so they keep the file's order. If that order is "
+                "wrong, fix it with Move up or Move down.",
                 Scope.ITEM,
                 item.first_row,
                 columns.letter("order"),

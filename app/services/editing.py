@@ -35,6 +35,8 @@ class CommentResult:
     summary: str
     """What happened, in a few words, for the comment's card."""
     warnings: tuple[Issue, ...]
+    changed: tuple[str, ...] = ()
+    """The columns whose stored value changed."""
 
 
 def _is_blank(name: str) -> bool:
@@ -95,7 +97,7 @@ def add_comment(
         )
         editing.touch_template(conn, path.template_id)
         warnings = _checks(read_comment(conn, comment_id))
-    return CommentResult(path, comment_id, "Added.", warnings)
+    return CommentResult(path, comment_id, "Added.", warnings, ("name", "comment_type"))
 
 
 def save_comment(
@@ -120,7 +122,7 @@ def save_comment(
         if changes
         else "No changes to save."
     )
-    return CommentResult(path, comment_id, summary, warnings)
+    return CommentResult(path, comment_id, summary, warnings, tuple(changes))
 
 
 def _changes(stored: StoredComment, submitted: Mapping[str, str]) -> dict[str, object]:
@@ -144,7 +146,8 @@ def revert_comment(conn: psycopg.Connection, comment_id: UUID) -> CommentResult 
     with conn.transaction():
         found = editing.source_row_of(conn, comment_id)
         path = editing.locate(conn, "comment", comment_id)
-        if found is None or path is None:
+        before = read_comment(conn, comment_id)
+        if found is None or path is None or before is None:
             return None
         original = original_comment(*found)
         values = {
@@ -155,7 +158,8 @@ def revert_comment(conn: psycopg.Connection, comment_id: UUID) -> CommentResult 
         editing.touch_template(conn, path.template_id)
         warnings = _checks(read_comment(conn, comment_id))
     summary = f"Put back as imported from row {found[1]}."
-    return CommentResult(path, comment_id, summary, warnings)
+    changed = tuple(column for column, value in values.items() if getattr(before, column) != value)
+    return CommentResult(path, comment_id, summary, warnings, changed)
 
 
 def original_comment(

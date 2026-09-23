@@ -1,18 +1,23 @@
 {% from "partials/node_menu.html" import node_menu, add_node %}
+{% from "partials/help.html" import help, tip, pane_notes %}
 <nav class="pane" id="items-pane" aria-label="Items">
-  <h2 class="pane-title">Items{% if section %}<span class="pane-context">{{ section.name }}</span>{% endif %}</h2>
+  <h2 class="pane-title">Items {{ tip(help.items) }}{% if section %}<span class="pane-context">{{ section.name }}</span>{% endif %}</h2>
+  {% if section %}
+  {{ pane_notes(issues.get(section.id, []) | selectattr("scope", "equalto", "section") | list, run_id) }}
+  {% endif %}
   {% if section and section.items %}
   <ul class="nodes">
     {% for node in section.items %}
     {% set url = "/t/" ~ template.id ~ "?section=" ~ section.id ~ "&item=" ~ node.id %}
+    {% set notes = issues.get(node.id, []) %}
     <li>
       <a href="{{ url }}" data-select
          hx-get="{{ url }}" hx-target="#comments-pane" hx-select="#comments-pane"
          hx-swap="outerHTML" hx-push-url="true"
          {% if item and node.id == item.id %}aria-current="page"{% endif %}>
         <span class="node-name">{{ node.name }}</span>
-        {% if issues.get(node.id) %}<span class="dot" title="{{ issues[node.id] | length }} import notes"></span>{% endif %}
-        <span class="count">{{ node.comments | length }}</span>
+        {% if notes %}<span class="dot" title="{{ notes | length }} import note{{ 's' if notes | length > 1 }} in this item"></span>{% endif %}
+        <span class="count" title="{{ node.comments | length }} comment{{ 's' if node.comments | length != 1 }}">{{ node.comments | length }}</span>
       </a>
       {{ node_menu("item", node) }}
     </li>

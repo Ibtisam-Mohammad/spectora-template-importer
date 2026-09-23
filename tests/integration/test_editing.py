@@ -342,3 +342,18 @@ def test_photos_survive_a_comment_edit(conn):
     with_photos = next(c for c in read_tree(conn, outcome.template_id).comments() if c.photos)
     editing.save_comment(conn, with_photos.id, {"name": "Photo comment"})
     assert read_comment(conn, with_photos.id).photos == with_photos.photos
+
+
+@pytest.mark.rule("E1")
+def test_changing_a_comments_type_moves_it_to_its_new_heading(client, conn, tree):
+    item = next(i for i in tree.items() if any(c.comment_type == "info" for c in i.comments))
+    comment = next(c for c in item.comments if c.comment_type == "info")
+    response = client.post(f"/comments/{comment.id}", data={"comment_type": "limit"}, headers=HTMX)
+    assert response.headers["HX-Retarget"] == "#comments-pane"
+    assert response.headers["HX-Reselect"] == "#comments-pane"
+    limitations = response.text.split('class="group group-limit"', 1)[1].split('class="group ', 1)[
+        0
+    ]
+    assert f'id="comment-{comment.id}" open' in limitations
+    unchanged = client.post(f"/comments/{comment.id}", data={"name": "Renamed"}, headers=HTMX)
+    assert "HX-Retarget" not in unchanged.headers

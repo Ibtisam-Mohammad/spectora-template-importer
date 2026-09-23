@@ -131,7 +131,40 @@ editor:
 - **Two separate lists.** What is missing from Spectora's export, and what this importer does
   not support.
 
-The editor work beyond the baseline is covered below, as usability, not as the improvement.
+**Why this one, and not the other two.**
+
+- **Trust comes first.** A friendlier editor does not help a customer who suspects the import
+  lost something, because they will not start editing.
+- **Difficult cases are covered here too.** The difficult cases this format actually produces
+  are the Plain Text export, merged same-named sections, photos and images that live on
+  Spectora's servers, and markup that cannot be shown safely. The report is where the customer
+  sees each of them, named by row, instead of discovering them months later.
+- **The time went on proving, not claiming.** The report is only worth trusting if its numbers
+  are real, so most of the time on it went into the checks behind it, not into the page.
+
+---
+
+## How far the editor goes
+
+The brief asks for renaming sections and items and editing comment text, and leaves the rest
+as a decision. I went further in one direction only: so that the inspector never has to go back
+to Spectora to fix something the import could not settle.
+
+- **Reorder.** Item order is best-effort from the file, so the inspector is the only one who
+  knows the right order and needs to be able to set it.
+- **Add and delete.** Empty sections and items never leave Spectora, so re-creating them has
+  to be possible here.
+- **Every comment field.** Answer format, choices, defaults, severity, recommendation and
+  location, laid out as Spectora's own editor lays them out, so the form is familiar on day
+  one.
+- **Revert to imported.** An inspector trying things out on four years of work needs a way
+  back.
+- **Guidance where it is needed.** A "?" on each heading and field explains it in plain words,
+  including the ones Spectora's export leaves cryptic, such as the recommendation code `pro`.
+  Import notes appear above the items or comments they concern, not only in the report.
+
+It is a working surface, not the chosen improvement. It is kept to what migration needs: no
+AI writing help, no search, no bulk edit (see below).
 
 ---
 
@@ -234,19 +267,42 @@ Spectora's editor.
 
 ## What I cut, and why
 
+The test for every cut: does this customer need it to move their template across intact? If
+not, it waited.
+
+**Cut from the import**
+
 - **A model in the import path.** The input is a fixed 42-column format that can be parsed
   exactly, and verified exactly. A model could invent sections or drop comments, and the
   report would then be checking a guess. A model would be worth its risk for other vendors'
   exports, which have no fixed format; those are out of scope.
 - **Other vendors' formats.** The brief scopes this to Spectora. They are refused cleanly,
   with the reason, rather than half-supported.
-- **Login.** It would put a step between the reviewer and the app. It is the first thing to
-  add.
-- **Drag-and-drop reordering.** Move up and move down cover the need with far less code.
-- **Photo editing, moving items between sections, and undo history.** Revert-to-imported
-  covers the most important undo, going back to what Spectora had.
+- **Re-importing into an existing template.** A customer who keeps editing in Spectora during
+  the switch would want a newer export merged in, with a diff. That needs matching rules the
+  format cannot support, since names are not unique. Today each upload becomes a new template.
+- **Copying images inside comment text.** It would mean rewriting the stored text. They are
+  flagged instead (rule PH3).
 - **Section and item settings.** The export does not carry them, so there would be nothing to
   import into them.
+
+**Cut from the editor**
+
+- **AI help writing comments.** Hive and Binsr both have it, but it is report writing, which
+  the brief puts out of scope, and it does nothing for migration fidelity.
+- **Search and bulk find-and-replace.** Useful in a 1,248-comment library, for example to
+  change a company name everywhere. It is the first editor feature I would add next.
+- **Drag-and-drop reordering.** Move up and move down cover the need with far less code.
+- **Photo editing, moving items between sections, and version history.** Revert-to-imported
+  covers the undo that matters most: going back to what Spectora had.
+
+**Cut from the app**
+
+- **Login and teams.** It would put a step between the reviewer and the app. It is the first
+  thing to add for real use.
+- **Handing the template over to Hive.** The real end of this workflow is a template inside
+  Hive. This app stands in for that. Its schema maps onto Hive's documented model (sections,
+  three comment types), which is where I would take it next.
 
 ---
 

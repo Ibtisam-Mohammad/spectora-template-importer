@@ -1,0 +1,38 @@
+{# Guidance shown in "?" tooltips, kept in one place so the wording can be reviewed together. #}
+{% set help = {
+  "sections": "The main parts of the template, in report order. Choose one to see its items.",
+  "items": "The things inspected in the chosen section. Choose one to see its comments.",
+  "comments": "The comments an inspector can pick for the chosen item, under Spectora's three headings.",
+  "info": "Information about the item, such as its type or material.",
+  "limit": "What could not be inspected, and why.",
+  "defect": "Problems found. Each has a severity and a recommendation.",
+  "other": "Comments whose type Spectora does not document. They were imported as written.",
+  "name": "The comment's title, as the inspector sees it in the list.",
+  "comment_type": "Which heading the comment sits under. Changing it moves the comment there.",
+  "answer_type": "How the inspector answers on site. These are Spectora's own names.",
+  "choices": "The options the inspector can tick, separated by commas. Multiple Choices needs at least one.",
+  "unit_options": "Units the inspector can choose for the number, separated by commas, such as ft, m.",
+  "default_value": "Filled in until the inspector changes it. For a Checkbox, true means ticked.",
+  "default_value_2": "The upper end of a Numeric Range.",
+  "default_unit_type": "The unit chosen until the inspector changes it.",
+  "category": "Low, Med or High. Spectora sets it only on deficiencies.",
+  "recommendation": "Spectora's code for who should fix it, as exported. For example, pro is Spectora's default. The export has these codes, not the names Spectora shows.",
+  "default_location": "Location tags filled in by default, separated by spaces, as Spectora writes them.",
+  "more": "Spectora's own settings, kept exactly as exported. Leave them unless you know what they do.",
+  "estimate": "The default cost estimate range for this comment.",
+  "revert": "Puts every field of this comment back as it was in the Spectora file.",
+  "edited": "The text was changed here. Revert to imported brings the original back.",
+} %}
+
+{% macro tip(text) %}<span class="tip" tabindex="0" role="img" aria-label="{{ text }}" data-tip="{{ text }}">?</span>{% endmacro %}
+
+{# The import notes about one node itself, shown at the top of the pane that lists its children. #}
+{% macro pane_notes(notes, run_id) %}
+{% if notes %}
+<div class="pane-notes" role="note">
+  <strong>{{ notes | length }} import note{{ "s" if notes | length > 1 }}</strong>
+  <ul>{% for note in notes %}<li>{{ note.detail }}</li>{% endfor %}</ul>
+  {% if run_id %}<a href="/runs/{{ run_id }}">See the import report</a>{% endif %}
+</div>
+{% endif %}
+{% endmacro %}
