@@ -150,7 +150,9 @@ the export preserves it intact, confirmed by round trip. The stock template's em
 `<div class="youtube-embed-wrapper">` is an older, different structure that arrived empty. Both
 are rendered as they arrive. The importer does not recognise either by class name.
 
-Full allowlist after correction:
+Full allowlist after correction. **The canonical list is the code in `app/render.py`**; this table
+summarises it, and the golden test in `tests/unit/test_render.py` holds both to the editor's real
+output:
 
 | Class | Allowed |
 | --- | --- |

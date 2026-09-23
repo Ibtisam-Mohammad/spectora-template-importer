@@ -1,0 +1,21 @@
+/* Spectora's comment editor is Froala. These rules give its table and video classes the look
+   they have in Spectora, so imported comments render as the inspector formatted them.
+   Scoped to .comment-body, the wrapper every rendered comment sits in. */
+
+.comment-body table { border-collapse: collapse; empty-cells: show; max-width: 100%; }
+.comment-body table td,
+.comment-body table th { border: 1px solid #dddddd; padding: 2px 5px; }
+.comment-body table th { background: #ececec; text-align: left; }
+
+.comment-body table.fr-dashed-borders td,
+.comment-body table.fr-dashed-borders th { border-style: dashed; }
+.comment-body table.fr-alternate-rows tbody tr:nth-child(2n) { background: #f5f5f5; }
+.comment-body table td.fr-highlighted,
+.comment-body table th.fr-highlighted { border: 1px double #ff0000; }
+.comment-body table td.fr-thick,
+.comment-body table th.fr-thick { border-width: 2px; }
+
+.comment-body span.fr-video { display: block; text-align: center; margin: 8px 0; }
+.comment-body span.fr-video iframe,
+.comment-body iframe { max-width: 100%; }
+.comment-body img { max-width: 100%; height: auto; }
