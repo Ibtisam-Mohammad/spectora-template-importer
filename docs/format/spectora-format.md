@@ -253,7 +253,7 @@ scope cuts.
   appearance in the file is the only ordering the file expresses.
 - **Section and item settings.** Only the names are exported. Sections also carry Hide Overview
   Grid, Optional/Included, Icon, Standards of Practice and Reminders; items carry Info Item,
-  Optional/Included and Reminders. Field-by-field table in `COLUMN-MAP.md`.
+  Optional/Included and Reminders. Field-by-field table in `docs/format/column-map.md`.
 - **All template-level settings**: Header Text, Display Options, Item Ratings configuration,
   Defect Categories, Reinspection Categories, Reinspection Header Text. Spectora enumerates
   these in its *Copy Template Settings* article precisely because they do not travel.

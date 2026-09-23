@@ -7,8 +7,8 @@ Two files analysed:
 
 | File | Rows | Sections | Items | Distinct item names |
 | --- | --- | --- | --- | --- |
-| `InterNACHI Residential -2026-09-22.xls` (committed) | 392 | 13 | 69 | 61 |
-| `InterNACHI Residential -2026-09-22_test_comment_format.xls` (committed; same account, one comment rewritten with every editor control) | 392 | 13 | 69 | 61 |
+| `fixtures/spectora/internachi-residential-2026-09-22.xls` (committed) | 392 | 13 | 69 | 61 |
+| `fixtures/spectora/internachi-residential-rich-comment.xls` (committed; same account, one comment rewritten with every editor control) | 392 | 13 | 69 | 61 |
 | `probe-html.xls` (committed; same account plus a probe section exercising every answer format, every category, three recommendations, three photos, special characters, and an empty section and item) | 403 | 14 | 70 | 62 |
 | `probe-plain.xls` (committed; the same template exported as Plain Text seconds later) | 403 | 14 | 70 | 62 |
 | `probe-duplicate.xls` (committed; probe-html plus two adjacent sections both named `ZZ Dup`) | 423 | 15 by block | 74 by block | 63 |
@@ -21,11 +21,11 @@ not committed.
 
 ## 0. Reconfirmation on `probe-html.xls`
 
-Every claim in this document and in `COLUMN-MAP.md` was re-tested against `probe-html.xls`
+Every claim in this document and in `docs/format/column-map.md` was re-tested against `probe-html.xls`
 alone by `tools/verify_claims.py`, which asserts each one with evidence:
 
 ```
-python tools/verify_claims.py probe-html.xls
+python tools/verify_claims.py fixtures/spectora/probe-html.xls
 probe-html.xls: 75/75 claims PASS
 ```
 
@@ -215,9 +215,9 @@ Only `info` rows vary, carrying `checkbox`, `number`, `text` and one `boolean`.
   class="youtube-embed-wrapper" style="position:relative;padding-bottom:56.25%;…">&nbsp;</div>`
   with no `<iframe>` inside. Seven identical empty shells in Room-by-Room. **These are artifacts
   of the stock template, not export loss**: a round-trip test proved the export preserves
-  Froala video embeds intact. See `PRESERVATION.md` section 4.
+  Froala video embeds intact. See `docs/design/preservation.md` section 4.
 - **Names that contain `<letter…>` are corrupted on export.** `<x>` becomes `<x></x>` in the HTML
-  export and is stripped in the Plain export. The UI shows them correctly. See `COLUMN-MAP.md`,
+  export and is stripped in the Plain export. The UI shows them correctly. See `docs/format/column-map.md`,
   "Name columns".
 - **43 hyperlinks to 20 external hosts.** None are Spectora-hosted, so they will not break on
   migration. Mostly consumer DIY sites, plus `nachi.org`, `youtube.com` and one `porch.com`.
@@ -238,7 +238,7 @@ implementation applies, would corrupt data in this file.
 - Choice values legitimately contain ampersands and quote characters, for example
   `Knob & Tube` and `1 1/2"`.
 - `Multiple Choice Options` is single entity-encoded, unlike the name and body columns. See
-  `COLUMN-MAP.md`.
+  `docs/format/column-map.md`.
 
 ---
 
@@ -272,7 +272,7 @@ spaces, so the string cannot be split back into tags without the account's tag v
 is not in the export. A custom tag with a bare comma as its label was added as a test and
 survived the round trip, so tag labels can be arbitrary punctuation and no delimiter is safe.
 Store verbatim.
-Details in `COLUMN-MAP.md` under column O.
+Details in `docs/format/column-map.md` under column O.
 
 ---
 

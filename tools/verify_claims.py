@@ -1,7 +1,7 @@
 """Claim-by-claim verification of everything documented about the Spectora export,
 run against a single file. Every claim prints PASS or FAIL with the evidence.
 
-    python tools/verify_claims.py probe-html.xls
+    python tools/verify_claims.py fixtures/spectora/probe-html.xls
 """
 import zipfile, html, re, sys
 import xml.etree.ElementTree as ET
@@ -197,7 +197,7 @@ claim('encoding', '&amp; survives in Comment Text after XML decode (must NOT be 
 claim('encoding', 'U+00A0 present in Comment Text (194), never literal &nbsp;', sum(r.get(3,'').count('\u00a0') for r in data.values()) == 194 and not any('&nbsp;' in r.get(3,'') for r in data.values()), '')
 
 # ------------------------------------------------------------------ HTML round-trip on row 263
-fix = open('fixtures/spectora-editor-kitchen-sink.html', encoding='utf-8').read().rstrip('\n').replace('&nbsp;', '\u00a0')
+fix = open('fixtures/editor/spectora-editor-kitchen-sink.html', encoding='utf-8').read().rstrip('\n').replace('&nbsp;', '\u00a0')
 def inv(s_):
     return (Counter(t.lower() for t in re.findall(r'<\s*([a-zA-Z][\w-]*)', s_)),
             Counter(c_ for cl in re.findall(r'class\s*=\s*"([^"]*)"', s_) for c_ in cl.split()))

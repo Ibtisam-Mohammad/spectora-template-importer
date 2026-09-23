@@ -2,7 +2,7 @@
 
 > **Status after `probe-html.xls` and `probe-plain.xls`: every item in section A is closed, and
 > every item in section B except B4 (`Uses`, needs a published report). Results are recorded
-> inline below and in `COLUMN-MAP.md`, `EDA-FINDINGS.md` and `PRESERVATION.md`.
+> inline below and in `docs/format/column-map.md`, `docs/format/eda-findings.md` and `docs/design/preservation.md`.
 > Every documented claim is re-asserted by `tools/verify_claims.py probe-html.xls`: 75/75 pass.**
 
 Everything verified so far comes from three real exports and one round-trip. What follows is
@@ -25,7 +25,7 @@ contain no comments cannot be exported by Spectora".
 ### A2. Can a multiple-choice option contain a comma? — **CLOSED, no**
 Spectora splits Answer Choices on every comma at input time. `1,000 sq ft` became two choices,
 `1` and `000 sq ft`. No escape syntax exists. `split(',')` on column G is therefore correct.
-Quotes survive. Details in `COLUMN-MAP.md` under column G.
+Quotes survive. Details in `docs/format/column-map.md` under column G.
 
 ### A3b. What does the `Signature` answer format export as? — **CLOSED: `signature`.**
 Spectora's Answer Format dropdown has seven options; the column header documents six values.
@@ -50,7 +50,7 @@ one section to `Roof <main>`. Export. Inspect raw XML.
 **Outcome decides:** the per-column decode table, and whether `<`, `>`, `"` are entity-encoded
 consistently with `&`.
 
-### A5. The Plain Text export. — **CLOSED.** Differs in A, B, C and D. Single-encodes names. Drops all URLs and table structure. See `EDA-FINDINGS.md` 6a.
+### A5. The Plain Text export. — **CLOSED.** Differs in A, B, C and D. Single-encodes names. Drops all URLs and table structure. See `docs/format/eda-findings.md` 6a.
 Never seen. The detection heuristic for "you exported the wrong variant" is currently "no row
 contains markup", which is a guess.
 **Test:** export the same template as Plain Text. Diff against the HTML export.

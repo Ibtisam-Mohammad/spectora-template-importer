@@ -1,6 +1,6 @@
 # Column definition map
 
-Every column of `InterNACHI Residential -2026-09-22.xls`, the Spectora **Export HTML Text**
+Every column of `fixtures/spectora/internachi-residential-2026-09-22.xls`, the Spectora **Export HTML Text**
 export committed to this repo.
 
 **All figures below were measured from that file**, not taken from documentation. The file is
@@ -32,7 +32,7 @@ Top-level grouping. Plain text. 100% filled, 13 distinct.
 Largest sections by comment count: Doors, Windows & Interior (54), Exterior (50), Plumbing (43).
 → Maps to `section.name`. **Section identity is the contiguous block of rows, not the string.**
 Spectora allows duplicate section names, and two adjacent ones export as a single block. See
-`EDA-FINDINGS.md`, "Duplicate names".
+`docs/format/eda-findings.md`, "Duplicate names".
 
 Every new section Spectora creates comes with an automatic `General` item. That is why
 `General` recurs under eight stock sections, and an unused one never exports because it has no
@@ -214,7 +214,7 @@ type-groups were dense, 120 contained duplicate values, and the column was often
 ten defects under `Roof / Coverings` carried `Order = 5`.
 → Sort by this **within each type group**, **tie-break on row position**, then render groups as
 Informational, Limitations, Deficiencies. Declare ordering as best-effort in the import report.
-See `EDA-FINDINGS.md` section 3.
+See `docs/format/eda-findings.md` section 3.
 
 ### K — `Answer Type (boolean, checkbox, date, number, range, text)`
 Enum, 100% filled. Observed: `boolean` 315, `checkbox` 72, `number` 4, `text` 1. The documented
@@ -362,7 +362,7 @@ Twenty columns, interleaved photo then caption. **Every one empty on all 392 row
 These are **Spectora CDN URLs**, observed as
 `https://cdn.spectora.com/default_photos/images/005/622/660/original/three.jpg?1790141917`, with
 the caption in the adjacent column. **No image binary is carried by the export**, and the URL
-dies with the customer's Spectora account. Fetch at import. See `PRESERVATION.md` section 4.
+dies with the customer's Spectora account. Fetch at import. See `docs/design/preservation.md` section 4.
 
 Three photos fill V, X, Z with captions in W, Y, AA, as expected. **The order is newest-first.**
 Photos added as `one`, `two`, `three` exported as Photo 1 = `three`, Photo 2 = `two`, Photo 3 =

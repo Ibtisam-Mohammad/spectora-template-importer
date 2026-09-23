@@ -1,6 +1,6 @@
 """Cell-level import coverage: what the schema consumes, and what it leaves behind.
 
-    python tools/coverage.py probe-html.xls [more.xls ...]
+    python tools/coverage.py fixtures/spectora/probe-html.xls [more.xls ...]
 """
 import zipfile, re, sys
 import xml.etree.ElementTree as ET
@@ -26,7 +26,7 @@ def load(p):
         out.append(d)
     return out
 
-# Columns the schema in SCHEMA.md stores. Everything else is deliberately not modelled.
+# Columns the schema in docs/design/schema.md stores. Everything else is deliberately not modelled.
 MODELLED = {
     0: 'section.name', 1: 'item.name', 2: 'comment.name', 3: 'comment.body_html',
     4: 'comment.comment_type', 5: 'comment.severity', 6: 'comment.choices',

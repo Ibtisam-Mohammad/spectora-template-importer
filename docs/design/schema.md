@@ -9,8 +9,8 @@ provenance. Each one has to be settled before the next makes sense.
 layers, and the only thing the model owes them is that identity is surrogate and nothing is
 shared between templates.
 
-Every decision below is justified by a measurement in `EDA-FINDINGS.md` or a column definition
-in `COLUMN-MAP.md`.
+Every decision below is justified by a measurement in `docs/format/eda-findings.md` or a column definition
+in `docs/format/column-map.md`.
 
 ## Rule zero: know the format, never the template
 
@@ -51,7 +51,7 @@ ever appears, that is a migration, not a reason to blur the model now.
 
 A new block starts a new node even if its name repeats, so the model never merges what the
 file keeps separate. Adjacent same-named nodes are already merged in the file and cannot be
-recovered; see `EDA-FINDINGS.md`, "Duplicate names".
+recovered; see `docs/format/eda-findings.md`, "Duplicate names".
 
 The template itself has no row in the export. Its name survives only in the filename.
 
@@ -176,7 +176,7 @@ mutated by your parser and a malformed fragment cannot break the page.
 
 ## Layer 5 — Provenance and proof of fidelity
 
-> Expanded in `PRESERVATION.md`, including cell-level coverage numbers, the markup
+> Expanded in `docs/design/preservation.md`, including cell-level coverage numbers, the markup
 > inventory, and format detection for non-Spectora files.
 
 The brief grades "how you checked preservation", so preservation has to be checkable, which is

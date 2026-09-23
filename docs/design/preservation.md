@@ -122,7 +122,7 @@ editor can produce, plus the common Word-paste tags, and remove only the constru
 execute or escape.
 
 **Spectora's editor is Froala.** Confirmed from a live comment authored with every toolbar
-control, saved as `fixtures/spectora-editor-kitchen-sink.html`: the markup carries `fr-video`,
+control, saved as `fixtures/editor/spectora-editor-kitchen-sink.html`: the markup carries `fr-video`,
 `fr-draggable`, `fr-dashed-borders`, `fr-alternate-rows`, `fr-highlighted` and `fr-thick`
 classes. That fixture is the golden test for the renderer: **everything in it must survive
 sanitisation.** The first draft of this policy failed it in six CSS properties and six
@@ -182,7 +182,7 @@ rather than assumed.
 document claimed it did, based on empty `<div class="youtube-embed-wrapper">` shells in the
 stock template. That was tested directly: a comment authored in Spectora with a Vimeo embed, a
 formatted table and every toolbar control was exported and diffed against the editor's own
-source (`fixtures/spectora-editor-kitchen-sink.html`). **Every tag, attribute, class and CSS
+source (`fixtures/editor/spectora-editor-kitchen-sink.html`). **Every tag, attribute, class and CSS
 property survived.** The `<iframe>` is intact. The only changes Spectora made were additive:
 `&nbsp;` became U+00A0, and the `<a>` tag gained `fr-original-style=""` and
 `style="color: rgb(53, 119, 168);"` on save.
@@ -271,7 +271,7 @@ trusted.
 
 **Detection only changes the message, never the parsing.** The HTML export double-encodes `&`
 and the Plain export single-encodes it, but one strict, semicolon-only entity decode on the name
-columns is correct for both, so the parser has no variant branch; see `COLUMN-MAP.md`, "Name
+columns is correct for both, so the parser has no variant branch; see `docs/format/column-map.md`, "Name
 columns". Detection is a structural check on the file as a whole, not on any template's names or
 values, and its only output is the warning above. Record the verdict on `import_run`.
 
