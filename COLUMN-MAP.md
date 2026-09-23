@@ -30,14 +30,22 @@ survives only in the filename.
 Top-level grouping. Plain text. 100% filled, 13 distinct.
 **Double entity-encoded**, see the encoding section below.
 Largest sections by comment count: Doors, Windows & Interior (54), Exterior (50), Plumbing (43).
-→ Maps to `section.name`. Section identity is this string.
+→ Maps to `section.name`. **Section identity is the contiguous block of rows, not the string.**
+Spectora allows duplicate section names, and two adjacent ones export as a single block. See
+`EDA-FINDINGS.md`, "Duplicate names".
+
+Every new section Spectora creates comes with an automatic `General` item. That is why
+`General` recurs under eight stock sections, and an unused one never exports because it has no
+comments.
 
 ### B — `Item Name`
 Second-level grouping, scoped to its section. Plain text. 100% filled, **61 distinct names
 resolving to 69 items**, because some names repeat across sections. `General` alone appears
 under 8 different sections.
 **Double entity-encoded.**
-→ Maps to `item.name`. **Item identity is (Section Name, Item Name), never the name alone.**
+→ Maps to `item.name`. **Item identity is the contiguous block within its section block, never
+the name alone.** Duplicate item names are allowed inside one section; adjacent ones merge in the
+export with no trace.
 
 ### Name columns: special characters are accepted
 
@@ -397,20 +405,42 @@ The "missing from the export" bucket, evidenced rather than assumed.
   with no comments produces no rows and **vanishes from the export**. Confirmed: a section
   `ZZ Empty` and an item `ZZ Empty Item` were created and neither appears in either export
   variant. The customer's structure is silently truncated to whatever holds a comment.
+- **The boundary between adjacent same-named sections or items.** They export as one block.
 - **Template name.** No column. Survives only in the filename.
 - **The Location Tags vocabulary.** Account-level under Settings > Location Tags. Only the
   composed per-comment string is exported, and it cannot be decomposed without the list.
 - **Section and item ordering.** No order column above the comment level. See the finding
   below.
-- **Section and item attributes**: icons, optional or required flags, Standards of Practice
-  references, reminders, info-only flags, overview-grid participation. The Spectora UI shows a
-  distinct icon per section; none of it is in the file.
+- **Section and item settings. Only the name is exported.** Confirmed from Spectora's own
+  Add Section and Add Item dialogs, which show every field those records carry:
+
+  | Record | Field | In the UI | In the export |
+  | --- | --- | --- | --- |
+  | Section | Section Name | text | **yes**, column A |
+  | Section | Hide Overview Grid for this section | checkbox | no |
+  | Section | Optional/Included | `Included in every report` or `Optional - add on a per-report basis` | no |
+  | Section | Icon | one of about 40 glyphs, or `No Icon` | no |
+  | Section | Standards of Practice | rich-text editor, shown in the report's Standards tab | no |
+  | Section | Reminders | rich-text editor, shown in the mobile app | no |
+  | Item | Item Name | text | **yes**, column B |
+  | Item | Info Item (No ratings/defects/grid row) | checkbox | no |
+  | Item | Optional/Included | same two options as sections | no |
+  | Item | Reminders | rich-text editor, shown in the mobile app | no |
+
+  So the export carries one of six section fields and one of four item fields. Two of the
+  missing ones are real authored content, not settings. Standards of Practice and Reminders are
+  free-form rich text the inspector wrote, and Standards of Practice is printed in every report.
+  The file gives no way to tell whether a section had any, so the import report can only say:
+  "if you used these fields, they did not come across; re-enter them." Do not infer Info Item
+  from a section of all-informational comments; the flag is independent.
 - **Attachments.** The UI has an Attachments panel per template; no column exists.
 - **All template-level settings**: Header Text, Display Options, Item Ratings configuration,
   Defect Categories, Reinspection Categories, Reinspection Header Text.
 - **Image and video binaries.**
-- **Embedded videos, even as references.** The `<iframe>` is stripped from `Comment Text`; only
-  an empty `youtube-embed-wrapper` div survives. One occurrence here, seven in Room-by-Room.
+- **Not missing: embedded videos.** An earlier version of this list said the export strips
+  `<iframe>` embeds. The round-trip test disproved that; a Vimeo embed authored in the editor
+  exported intact. The one empty `youtube-embed-wrapper` div in the stock template is an
+  artifact of that template, not export loss.
 
 ### Finding: item display order is not recoverable
 

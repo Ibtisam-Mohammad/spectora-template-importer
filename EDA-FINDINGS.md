@@ -11,6 +11,7 @@ Two files analysed:
 | `InterNACHI Residential -2026-09-22_test_comment_format.xls` (committed; same account, one comment rewritten with every editor control) | 392 | 13 | 69 | 61 |
 | `probe-html.xls` (committed; same account plus a probe section exercising every answer format, every category, three recommendations, three photos, special characters, and an empty section and item) | 403 | 14 | 70 | 62 |
 | `probe-plain.xls` (committed; the same template exported as Plain Text seconds later) | 403 | 14 | 70 | 62 |
+| `probe-duplicate.xls` (committed; probe-html plus two adjacent sections both named `ZZ Dup`) | 423 | 15 by block | 74 by block | 63 |
 | Room-by-Room Residential (second export, generalisation test) | 798 | 22 | 136 | **62** |
 
 Both are 42 columns. The second file exists only to prove the parser rules generalise; it is
@@ -90,6 +91,45 @@ do not "normalise" whitespace, because collapsing U+00A0 changes rendered output
 keyed on `(section, item, comment name)` silently drops one.
 
 **Use a surrogate key plus row position.** Do not derive comment identity from the name.
+
+### Duplicate names
+
+**Duplicate names are allowed, and adjacent duplicates are merged by the export at both
+levels.** Tested with `probe-duplicate.xls`. In Spectora: two sections both named `ZZ Dup`, next
+to each other, each holding three items `General`, `Same`, `Same`. Six items across two sections,
+20 comments. What the export contains:
+
+| | In Spectora | In the export |
+| --- | --- | --- |
+| Sections | `ZZ Dup`, `ZZ Dup` | one `ZZ Dup` block of 20 rows |
+| Items | `General`, `Same`, `Same` in each | `General`, `Same`, `General`, `Same` |
+| Comments per item | 6, 2, 2, 6, 2, 2 | 6, 4, 6, 4 |
+
+The file has no section or item identifier, only names repeated on every row, so two same-named
+neighbours produce one unbroken block and the boundary between them is gone. No rule can recover
+it. What each grouping rule produces from this file:
+
+| Rule | Sections | Items | Correct? |
+| --- | --- | --- | --- |
+| Group by name | 1 | 2 (`General` 12, `Same` 8) | no, merges everything |
+| **Group by contiguous block** | 1 | 4 (6, 4, 6, 4) | closer; loses what the file lost |
+| Truth | 2 | 6 | not recoverable from the file |
+
+**Rule adopted: a new contiguous block starts a new node, even if the name repeats.** Twice in the
+sheet means twice in the model. It never merges what the file keeps separate. It cannot split
+what the file already merged.
+
+**Detection is possible for sections, not for items.** When an item name reappears in a separate
+block inside one section block, as `General` and `Same` do here, that is the signature of two
+merged same-named sections. Report it: "Items General and Same each appear twice in ZZ Dup.
+Spectora exports adjacent sections with the same name as one section; if you had two, split
+them." Do not split automatically; a section that genuinely lists `General`, `Same`, `General`
+would be split wrongly. Two adjacent same-named *items* leave no trace at all: `Same` + `Same`
+with two comments each is indistinguishable from one `Same` with four.
+
+Evidence the first half of the block is Spectora's section copy: its 10 comments all carry the
+same save time, `09/23/2026 00:46:57`, while the hand-made section's comments carry ten
+different times. The copy was exported before the original.
 
 ### Item name is not unique within the template
 

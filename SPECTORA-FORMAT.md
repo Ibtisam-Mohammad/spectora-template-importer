@@ -249,8 +249,9 @@ scope cuts.
 - **Template name.** Not a column. It survives only in the filename.
 - **Section and item ordering.** No order column exists above the comment level, so first
   appearance in the file is the only ordering the file expresses.
-- **Section and item attributes**: icons, optional or required flags, Standards of Practice
-  references, reminders, info-only items, overview-grid participation.
+- **Section and item settings.** Only the names are exported. Sections also carry Hide Overview
+  Grid, Optional/Included, Icon, Standards of Practice and Reminders; items carry Info Item,
+  Optional/Included and Reminders. Field-by-field table in `COLUMN-MAP.md`.
 - **All template-level settings**: Header Text, Display Options, Item Ratings configuration,
   Defect Categories, Reinspection Categories, Reinspection Header Text. Spectora enumerates
   these in its *Copy Template Settings* article precisely because they do not travel.

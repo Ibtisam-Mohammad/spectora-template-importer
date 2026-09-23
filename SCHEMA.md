@@ -28,9 +28,13 @@ ever appears, that is a migration, not a reason to blur the model now.
 
 | Level | Identity | Why |
 | --- | --- | --- |
-| Section | `name` within a template | 13 unique names, no collisions |
-| Item | **`(section, name)`** | 62 names resolve to 136 items in Room-by-Room; name alone collapses 74 items |
+| Section | **contiguous block of rows** | two adjacent same-named sections export as one block; name alone cannot tell them apart |
+| Item | **contiguous block within its section block** | 62 names resolve to 136 items in Room-by-Room; the same name can recur as a separate block inside one section |
 | Comment | **surrogate key** | `Fireplace / Damper Doors` has two comments named `Damper Inoperable` |
+
+A new block starts a new node even if its name repeats, so the model never merges what the
+file keeps separate. Adjacent same-named nodes are already merged in the file and cannot be
+recovered; see `EDA-FINDINGS.md`, "Duplicate names".
 
 The template itself has no row in the export. Its name survives only in the filename.
 

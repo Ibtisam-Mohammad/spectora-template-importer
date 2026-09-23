@@ -24,7 +24,18 @@ for p in sys.argv[1:]:
     secs=list(OrderedDict.fromkeys(d1(g(r,0)) for r in data))
     items=list(OrderedDict.fromkeys((d1(g(r,0)),d1(g(r,1))) for r in data))
     names={i for _,i in items}
-    print(f"  cols={len(hdr)} rows={len(data)} sections={len(secs)} items={len(items)} distinct item names={len(names)}")
+    print(f"  cols={len(hdr)} rows={len(data)} sections={len(secs)} items={len(items)} distinct item names={len(names)}  (grouped by name)")
+    sb=0; ib=0; prev_s=None; prev_i=None; repeats=set(); seen_in_block=set()
+    for r in data:
+        s_, i_ = d1(g(r,0)), (d1(g(r,0)), d1(g(r,1)))
+        if s_ != prev_s: sb += 1; seen_in_block=set(); prev_i=None
+        if i_ != prev_i:
+            ib += 1
+            if i_ in seen_in_block: repeats.add(i_)
+            seen_in_block.add(i_)
+        prev_s, prev_i = s_, i_
+    print(f"  section blocks={sb} item blocks={ib}  (grouped by contiguous block, the adopted rule)")
+    print(f"  item names recurring as a separate block inside one section block: {sorted(repeats) or 'none'}")
     print(f"  types={dict(Counter(g(r,4) for r in data))}")
     print(f"  answer types={dict(Counter(g(r,10) for r in data))}")
     ok=lambda b:"PASS" if b else "**FAIL**"
