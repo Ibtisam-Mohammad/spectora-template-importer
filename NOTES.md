@@ -109,8 +109,8 @@ Explored Binsr alongside Hive. Observations are from the trial, not from documen
 
 ## The improvement: an import report you can trust
 
-The app calls it **Import results**, because in this product "report" means the inspection
-report a homeowner receives.
+In the app it is the **Template report**: the report on what happened when the template was
+imported.
 
 **The customer problem.** This customer has four years of tuned comments and will not retype
 them. What stops them switching is doubt: did the import get everything, and would they notice

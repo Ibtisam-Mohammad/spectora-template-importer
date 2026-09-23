@@ -382,6 +382,12 @@ input, select { font: inherit; padding: 5px 8px; border: 1px solid var(--line); 
 .combo-option[aria-selected="true"] { font-weight: 600; }
 .combo-count { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .combo-empty { color: var(--muted); font-size: 13px; }
+.combo-caption {
+  padding: 4px 10px 6px;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line-soft);
+}
 
 /* ---------------------------------------------------------------- the file's own row */
 
@@ -459,6 +465,7 @@ input, select { font: inherit; padding: 5px 8px; border: 1px solid var(--line); 
 .report h3 { margin: 0 0 6px; font-size: 15px; }
 .report-head h1 { margin-bottom: 4px; overflow-wrap: anywhere; }
 .report-head p { margin: 0; }
+.report-head .report-lead { margin: 0 0 6px; font-size: 15px; }
 
 .banner { margin: 16px 0 0; padding: 12px 16px; border-radius: 6px; line-height: 1.5; }
 .banner-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid #b7dfc3; }

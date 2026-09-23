@@ -176,7 +176,13 @@
     const list = combo.querySelector(".combo-list");
     const query = narrow ? input.value.trim().toLowerCase() : "";
     const values = comboValues(input).filter((v) => v.value.trim().toLowerCase().includes(query));
-    list.replaceChildren(...values.map((v) => comboOption(v.value, v.count, v.value === input.value)));
+    const caption = document.createElement("span");
+    caption.className = "combo-caption";
+    caption.textContent = "Used in this template. Picking one changes this comment only.";
+    list.replaceChildren(
+      caption,
+      ...values.map((v) => comboOption(v.value, v.count, v.value === input.value)),
+    );
     if (!values.length) {
       const empty = document.createElement("span");
       empty.className = "combo-empty";

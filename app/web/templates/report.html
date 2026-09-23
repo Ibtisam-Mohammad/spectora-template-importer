@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% set run = report.run %}
-{% block title %}Import results: {{ run.source_filename }}{% endblock %}
+{% block title %}Template report: {{ run.source_filename }}{% endblock %}
 {% block topbar %}
-<span class="template-name">Import results</span>
+<span class="template-name">Template report</span>
 <nav class="topbar-actions">
   {% if run.template_id %}<a href="/t/{{ run.template_id }}">Open template</a>{% endif %}
   <a href="/">Library</a>
@@ -12,6 +12,8 @@
 <section class="page report">
   <header class="report-head">
     <h1>{{ run.source_filename }}</h1>
+    <p class="report-lead">What happened when this file was imported: what it held, what was
+      stored, and anything that needs a look.</p>
     <p class="muted">
       {{ report.verdict_label }} &middot; imported {{ run.started_at | when }}
       {% if run.template_name %}&middot; now the template <a href="/t/{{ run.template_id }}">{{ run.template_name }}</a>

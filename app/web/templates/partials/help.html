@@ -33,7 +33,7 @@
 <div class="pane-notes" role="note">
   <strong>{{ notes | length }} import note{{ "s" if notes | length > 1 }}</strong>
   <ul>{% for note in notes %}<li>{{ note.detail }}</li>{% endfor %}</ul>
-  {% if run_id %}<a href="/runs/{{ run_id }}">See the import results</a>{% endif %}
+  {% if run_id %}<a href="/runs/{{ run_id }}">See the template report</a>{% endif %}
 </div>
 {% endif %}
 {% endmacro %}

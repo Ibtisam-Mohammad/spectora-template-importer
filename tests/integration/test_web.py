@@ -202,7 +202,7 @@ def test_an_items_own_notes_are_listed_above_its_comments(client, conn):
     comments_pane = page.split('id="comments-pane"', 1)[1]
     box = comments_pane.split('class="pane-notes"', 1)[1].split("</div>", 1)[0]
     assert detail in html_unescape(box)
-    assert "See the import results" in box
+    assert "See the template report" in box
 
 
 def test_a_sections_own_notes_are_listed_above_its_items(client, conn):
@@ -253,6 +253,6 @@ def test_every_filled_cell_of_the_source_row_is_on_the_card(client, conn):
 def test_a_copy_links_to_its_originals_import_results(client, conn):
     tree = imported(client, conn, PRIMARY)
     copy = client.post(f"/t/{tree.id}/duplicate", follow_redirects=False).headers["location"]
-    assert "Original&#39;s import results" in client.get(copy).text
+    assert "Template report (original)" in client.get(copy).text
     library = client.get("/").text
-    assert "Import results</a>" in library and "Original&#39;s import results</a>" in library
+    assert "Template report</a>" in library and "Template report (original)</a>" in library
