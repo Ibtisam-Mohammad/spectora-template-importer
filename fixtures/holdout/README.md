@@ -22,3 +22,51 @@ Spectora showed a warning when exporting the TREC template: "Note that this temp
 special type (TREC_7_6), which includes data that might not work well with a re-import such as
 locked sections and items. We don't recommend re-importing!" That is the only thing known about
 its contents, and it came from Spectora's UI, not from the file.
+
+## The run, 23 September 2026
+
+Run once, after the parser, importer, report and editor were finished (parser version 1), with
+`python -m app.cli parse` on each file and `pytest --holdout` against a test database. The
+hashes above were checked first and all four matched.
+
+**How blind it was.** Radon, TREC and Gromicko were unseen. Room-by-Room was not fully blind:
+the analysis used a copy of the same stock template from outside this repository (see
+`docs/format/eda-findings.md`), so its size was known in advance. It is still a check that the
+parser reproduces those numbers from our own export.
+
+| File | Verdict | Sections | Items | Comments | Deficiency / Info / Limit | Import notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `tpl-gromicko.xls` | HTML | 17 | 133 | 1,248 | 921 / 215 / 112 | 73 order ties |
+| `tpl-radon.xls` | HTML | 2 | 3 | 10 | 0 / 10 / 0 | 3 order ties |
+| `tpl-room-by-room.xls` | HTML | 22 | 136 | 798 | 661 / 114 / 23 | 120 order ties |
+| `tpl-trec.xls` | HTML | 7 | 42 | 218 | 141 / 70 / 7 | 1 invariant |
+
+**What held.**
+
+- All four were recognised as HTML Text exports, with all 42 headers and no unknown ones.
+- Every row became a comment. None was skipped and none was empty.
+- Each file imported, and the in-transaction verification passed: every source row stored
+  cell for cell, and the tree read back field for field.
+- Parsing the stored rows again reproduced each template exactly, and every comment re-parsed
+  on its own from its source row, which is what revert does.
+- Room-by-Room gave 22 sections, 136 items and 798 comments, the numbers measured on the
+  outside copy. Its 120 order-tie notes match the 120 of 220 groups measured there.
+- TREC's warning about locked sections and items did not show up in the file: `Locked`,
+  `Simple Format` and `Disable Photos` are empty on every row of all four exports.
+
+**What it found.**
+
+- TREC has one comment, `Type of Storage Equipment` (row 213), with Answer Type `checkbox` and
+  no choices. It is reported as an unusual combination and imported as it is. This is the
+  intended behaviour, not a failure.
+- Gromicko's comment text holds 13 images inside the text, all hosted on Spectora's servers
+  (`cdn.spectora.com/editor_assets/...`). The importer copied only the Default Photos, so these
+  would have stopped working with the Spectora account, and nothing said so. **A general gap:
+  content at risk was not visible.**
+- Seven of those images carry `float: left`, which the display policy did not allow, so text
+  no longer wrapped around them. **A general gap: ordinary formatting was held back.**
+- Gromicko also carries attributes pasted from a website builder (`data-testid`,
+  `data-mesh-id`, `data-motion-part`). They carry no formatting; they are kept, not displayed,
+  and listed in the report.
+- TREC's one YouTube frame is styled `position: absolute` without a positioned container. The
+  display drops `position`, and the frame shows at its own size. Nothing to fix.
