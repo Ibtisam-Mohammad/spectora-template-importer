@@ -19,26 +19,17 @@ A single "we imported it" figure hides the interesting part. Measured on the com
 | Measure | Value | Meaning |
 | --- | --- | --- |
 | **Capture coverage** | **100%** | Every cell is stored verbatim in `source_row`. Nothing is discarded, ever. |
-| **Model coverage** | **74.6%** | 3,544 of 4,753 non-empty cells are promoted into typed columns (`probe-html.xls`, schema as written). |
-| **Varying-data coverage** | **100%** | Every non-empty cell whose value differs anywhere in the file is in the model. The 1,209 unconsumed cells are the three constant system-default columns. |
+| **Model coverage** | **100%** | All 4,753 non-empty cells of `probe-html.xls` land in a typed field, because every one of the 42 columns has one. |
+| **Varying-data coverage** | **100%** | Follows from the above. Kept as its own line because it is the number that matters if a column is ever deliberately dropped. |
 
-The third number is the honest one, and it decomposes cleanly:
+The third number An earlier version of this table left three columns unstored because they held the same value
+on every row: `Default Estimate Min` = 10, `Default Estimate Max` = 1000, `Uses` = 0. That
+reasoned from the templates we had seen to the format as a whole. Rule zero in
+`docs/design/schema.md` forbids exactly that, so they are now stored like everything else. They
+still register as *constant* in the cell ledger, which is useful information for the import
+report; it just no longer decides what is kept.
 
-```
-non-empty cells not consumed           1,209
-  Default Estimate Min = 10  (403)     constant on every row, system default
-  Default Estimate Max = 1000 (403)    constant on every row, system default
-  Uses = 0                    (403)    constant on every row, usage counter
-```
-
-**Unconsumed is not the same as lost.** All three columns hold a single value on every row, so
-nothing about the customer's template is expressible in them. `Last Modified`, which an earlier
-draft of this document left out, is a genuine per-comment save time and is now modelled, which
-is what takes varying-data coverage to 100%. These numbers come from `tools/coverage.py`, whose
-"constant" test requires one non-empty value on *every* row; a column populated on a single row
-is sparse customer data, not a default, and is consumed.
-
-Quoting all three numbers, and saying which one you think matters, is a far stronger answer than
+ numbers, and saying which one you think matters, is a far stronger answer than
 "nothing was dropped."
 
 ---

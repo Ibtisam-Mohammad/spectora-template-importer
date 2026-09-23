@@ -61,10 +61,11 @@ contains markup", which is a guess.
 
 ## B. Fills in the map. Worth doing, does not change code.
 
-### B1. `Locked`, `Disable Photos`, `Simple Format` — **CLOSED, not in the UI**
+### B1. `Locked`, `Disable Photos`, `Simple Format` — **no comment-level UI control; not assumed empty**
 No control for any of the three exists in the comment create dialog or edit view, across all
-seven answer formats, nor in the Deficiency dialog. Legacy or API-only. Expect them permanently
-empty for UI-authored templates.
+seven answer formats, nor in the Deficiency dialog. But Spectora's export dialog for the TREC REI
+7-6 template mentions "locked sections and items", so special template types may populate them.
+The schema stores all three as text; the held-out TREC export will show what they contain.
 
 ### B2. Multiple default photos. — **CLOSED.** Fill V, X, Z in order, captions W, Y, AA. **Newest first.**
 Only `Default Photo 1` has been observed.

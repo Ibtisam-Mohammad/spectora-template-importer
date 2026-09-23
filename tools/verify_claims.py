@@ -119,7 +119,7 @@ def const(i):
 for i, exp in [(15, '10'), (16, '1000'), (20, '0')]:
     ok, v = const(i); claim('constant', f'{cn(i)} {hdr[i]} == {exp!r} on all {len(data)} rows', ok and v == exp, repr(v))
 for i in [13, 17, 18, 19]:
-    ok, v = const(i); claim('constant', f'{cn(i)} {hdr[i][:28]} empty on all rows (no UI control)', ok and v == '', repr(v))
+    ok, v = const(i); claim('constant', f'{cn(i)} {hdr[i][:28]} empty on all rows in this file', ok and v == '', repr(v))
 
 # ------------------------------------------------------------------ probe rows: answer formats and defaults
 R = {n: byname(n) for n in ['Probe Limitation','Probe Photos','Probe Choices','Probe Deficiency Mid','Probe Range',

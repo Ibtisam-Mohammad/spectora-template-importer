@@ -288,8 +288,9 @@ the Numeric Range format.
 ### N — `Default Unit Type (for "number" and "range" types)`
 **Empty on all 392 rows, and no control for it exists in the UI.** The Number and Numeric Range
 edit views offer "Unit Type Choices" (column H) but no way to pick a default unit. Remained empty
-on the probe `range` and `number` comments even with unit choices filled in. Same class as R, S
-and T: expect it permanently empty for UI-authored templates.
+on the probe `range` and `number` comments even with unit choices filled in. Empty in every export
+analysed, but that describes the templates we have seen, not the format. Stored as text
+regardless.
 
 ### O — `Default Location`
 **Empty on all 392 rows** of the stock file. Populated in the second export.
@@ -339,20 +340,32 @@ contain spaces.
 ### R — `Locked`
 **Empty on all 392 rows, and no control for it exists anywhere in the comment UI.**
 Checked the create dialog and the edit view for all seven answer formats, and the Deficiency
-dialog. Likely legacy or API-only. Expect it to stay empty for any template authored through the
-web UI. Documented as `true`/`false`.
+dialog. Documented as `true`/`false`.
+
+Spectora's own export dialog for a TREC REI 7-6 template warns that it "includes data that might
+not work well with a re-import such as locked sections and items", so templates of special types
+may populate columns that stock templates leave empty. **Stored as text regardless; nothing in the
+importer assumes it is empty.**
 
 ### S — `Simple Format`
 **Empty on all 392 rows, and no control for it exists anywhere in the comment UI.**
 Checked the create dialog and the edit view for all seven answer formats, and the Deficiency
-dialog. Likely legacy or API-only. Expect it to stay empty for any template authored through the
-web UI. Semantics undocumented.
+dialog. Semantics undocumented.
+
+Spectora's own export dialog for a TREC REI 7-6 template warns that it "includes data that might
+not work well with a re-import such as locked sections and items", so templates of special types
+may populate columns that stock templates leave empty. **Stored as text regardless; nothing in the
+importer assumes it is empty.**
 
 ### T — `Disable Photos`
 **Empty on all 392 rows, and no control for it exists anywhere in the comment UI.**
 Checked the create dialog and the edit view for all seven answer formats, and the Deficiency
-dialog. Likely legacy or API-only. Expect it to stay empty for any template authored through the
-web UI. Documented as `true`/`false`.
+dialog. Documented as `true`/`false`.
+
+Spectora's own export dialog for a TREC REI 7-6 template warns that it "includes data that might
+not work well with a re-import such as locked sections and items", so templates of special types
+may populate columns that stock templates leave empty. **Stored as text regardless; nothing in the
+importer assumes it is empty.**
 
 ### U — `Uses` — degenerate
 `0` on **all 392 rows**. Presumably a usage counter, reset or unused on a stock template.

@@ -126,13 +126,36 @@ create table comment (
   choices         text[] not null default '{}',
   unit_options    text[] not null default '{}',
   recommendation  text,                -- opaque slug, e.g. 'pro', 'monitor'
-  default_value   text,
+  default_value   text,                -- never coerced: 'true' and 'f' both occur
   default_value_2 text,
+  default_unit_type text,
+  default_location  text,              -- verbatim, including the leading space
+  estimate_min    text,
+  estimate_max    text,
+  locked          text,
+  simple_format   text,
+  disable_photos  text,
+  uses            text,
+  source_last_modified text,           -- MM/DD/YYYY HH:MM:SS, as exported
   position        integer not null,
   source_row      integer,             -- row in the spreadsheet
   source_order    integer              -- raw Order (w/i item), kept verbatim
 );
+
+create table comment_photo (
+  id           uuid primary key default gen_random_uuid(),
+  comment_id   uuid not null references comment(id) on delete cascade,
+  position     integer not null,       -- 1..10, as exported (Spectora writes newest first)
+  source_url   text not null,          -- cdn.spectora.com; dies with the Spectora account
+  caption      text,
+  stored_path  text                    -- our copy of the bytes; null if the fetch failed
+);
 ```
+
+**Every one of the 42 columns has a field.** Some have never held anything but a default or
+nothing at all in the exports we have. That is a fact about those templates, not about the
+format, so no column is dropped on the strength of it. Unknown meaning is not a reason to
+discard; it is a reason to store as text.
 
 **`comment_type` and `answer_type` are `text`, not Postgres enums.** A native enum cannot store
 a value it has not seen, so an unfamiliar export would either fail the insert or force the

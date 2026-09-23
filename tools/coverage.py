@@ -26,26 +26,21 @@ def load(p):
         out.append(d)
     return out
 
-# Columns the schema in docs/design/schema.md stores. Everything else is deliberately not modelled.
+# Columns the schema in docs/design/schema.md stores: all 42.
 MODELLED = {
     0: 'section.name', 1: 'item.name', 2: 'comment.name', 3: 'comment.body_html',
     4: 'comment.comment_type', 5: 'comment.severity', 6: 'comment.choices',
     7: 'comment.unit_options', 8: 'comment.recommendation', 9: 'comment.source_order',
     10: 'comment.answer_type', 11: 'comment.default_value', 12: 'comment.default_value_2',
-    14: 'comment.default_location', 41: 'comment.source_last_modified',
+    13: 'comment.default_unit_type', 14: 'comment.default_location',
+    15: 'comment.estimate_min', 16: 'comment.estimate_max', 17: 'comment.locked',
+    18: 'comment.simple_format', 19: 'comment.disable_photos', 20: 'comment.uses',
+    41: 'comment.source_last_modified',
 }
 for n in range(10):
     MODELLED[21 + 2 * n] = f'comment.photos[{n}].url'
     MODELLED[22 + 2 * n] = f'comment.photos[{n}].caption'
-NOT_MODELLED_REASON = {
-    13: 'no UI control exists; empty in every export seen',
-    15: 'system default, identical on every row',
-    16: 'system default, identical on every row',
-    17: 'no UI control exists; empty in every export seen',
-    18: 'no UI control exists; empty in every export seen',
-    19: 'no UI control exists; empty in every export seen',
-    20: 'usage counter, 0 on every row; needs a published report to change',
-}
+NOT_MODELLED_REASON = {}   # every known column has a field; anything here needs a justification
 
 for path in sys.argv[1:]:
     rows = load(path); hdr = rows[0]; data = rows[1:]
