@@ -1,5 +1,10 @@
 # Remaining unknowns, and the one session that closes them
 
+> **Status after `probe-html.xls` and `probe-plain.xls`: every item in section A is closed, and
+> every item in section B except B4 (`Uses`, needs a published report). Results are recorded
+> inline below and in `COLUMN-MAP.md`, `EDA-FINDINGS.md` and `PRESERVATION.md`.
+> Every documented claim is re-asserted by `tools/verify_claims.py probe-html.xls`: 75/75 pass.**
+
 Everything verified so far comes from three real exports and one round-trip. What follows is
 what is still unobserved, ranked by whether it changes code or only fills in the map. Each item
 names the exact edit to make in Spectora. Make all of them in one session on a handful of
@@ -9,7 +14,7 @@ throwaway comments, then export **twice**: once as HTML Text, once as Plain Text
 
 ## A. Changes parser or model. Must test.
 
-### A1. Do empty sections and empty items export at all?
+### A1. Do empty sections and empty items export at all? — **CLOSED, no.** `ZZ Empty` and `ZZ Empty Item` are absent from both exports.
 Rows are comments. A section with no items, or an item with no comments, produces zero rows.
 If so, the export cannot represent them and the customer's structure is silently truncated.
 **Test:** add one new section with no items, and one new item under an existing section with no
@@ -22,14 +27,14 @@ Spectora splits Answer Choices on every comma at input time. `1,000 sq ft` becam
 `1` and `000 sq ft`. No escape syntax exists. `split(',')` on column G is therefore correct.
 Quotes survive. Details in `COLUMN-MAP.md` under column G.
 
-### A3b. What does the `Signature` answer format export as?
+### A3b. What does the `Signature` answer format export as? — **CLOSED: `signature`.**
 Spectora's Answer Format dropdown has seven options; the column header documents six values.
 `Signature` has no known export value.
 **Test:** create one comment with Answer Format `Signature`. Export.
 **Outcome decides:** whether the answer-type vocabulary is open-ended, and confirms the
 "store unknown enums verbatim" decision.
 
-### A3. What do `range` and `date` answer types look like?
+### A3. What do `range` and `date` answer types look like? — **CLOSED.** `range`: L=`10`, M=`20`, H=`inches, feet`, N empty. `date`: L empty, no default field exists. N has no UI control.
 Never observed. They are the only documented answer types not yet seen, and `range` is the only
 consumer of column M `Default Value 2` and one of two consumers of column N `Default Unit Type`.
 **Test:** set one comment to `range` with Default Value 10, Default Value 2 50, Default Unit Type
@@ -37,7 +42,7 @@ consumer of column M `Default Value 2` and one of two consumers of column N `Def
 **Outcome decides:** the type and format of L, M, N, and whether `date` has a serialised format
 that needs parsing.
 
-### A4. Encoding depth of `Comment Name`, and non-ampersand characters everywhere.
+### A4. Encoding depth of `Comment Name`, and non-ampersand characters everywhere. — **CLOSED.** C matches A and B. `&` double, `<>` single, `"` bare, in the HTML export. Names containing `<letter` are auto-closed on export.
 Columns A, B, D are double-encoded; G is single. Column C has never contained an ampersand, so
 its depth is untested. Characters other than `&` are untested in every column.
 **Test:** rename one comment to `Smith & Sons <test> "quoted"`, one item to `Attic & Eaves`,
@@ -45,7 +50,7 @@ one section to `Roof <main>`. Export. Inspect raw XML.
 **Outcome decides:** the per-column decode table, and whether `<`, `>`, `"` are entity-encoded
 consistently with `&`.
 
-### A5. The Plain Text export.
+### A5. The Plain Text export. — **CLOSED.** Differs in A, B, C and D. Single-encodes names. Drops all URLs and table structure. See `EDA-FINDINGS.md` 6a.
 Never seen. The detection heuristic for "you exported the wrong variant" is currently "no row
 contains markup", which is a guess.
 **Test:** export the same template as Plain Text. Diff against the HTML export.
@@ -61,12 +66,12 @@ No control for any of the three exists in the comment create dialog or edit view
 seven answer formats, nor in the Deficiency dialog. Legacy or API-only. Expect them permanently
 empty for UI-authored templates.
 
-### B2. Multiple default photos.
+### B2. Multiple default photos. — **CLOSED.** Fill V, X, Z in order, captions W, Y, AA. **Newest first.**
 Only `Default Photo 1` has been observed.
 **Test:** add three photos with captions to one comment. Export. Confirm they fill V, X, Z in
 order with captions in W, Y, AA, and that the URL pattern is stable.
 
-### B3. `Recommendation` vocabulary — partially open
+### B3. `Recommendation` vocabulary — **CLOSED.** `carpetcleaner`, `appliance`, `cabinet`; No Recommendation is blank; `pro` is the system default on non-deficiency rows. Not derivable.
 Deficiency-only. List begins `No Recommendation`, `Appliance Repair`, `Builder`,
 `Cabinet Contractor`, `Carpentry Contractor`, `Carpet Cleaner` and scrolls further.
 `Cabinet Contractor` → `cabinet`, so the slug looks like the first word lowercased.
@@ -78,12 +83,12 @@ confirm the derivation rather than assuming it.
 **Test:** if a sample inspection is run in Spectora anyway, publish it using two or three
 comments, then export. See whether `Uses` moved.
 
-### B5. `Default Value` for `number`, `text` and `checkbox`.
+### B5. `Default Value` for `number`, `text` and `checkbox`. — **CLOSED.** `42`, `hello`, and no field for Multiple Choices.
 Only observed once, as `true` on a boolean. Unknown whether a checkbox default is one choice, a
 list, or an index.
 **Test:** set a default on one comment of each type. Export.
 
-### B6. Item reorder.
+### B6. Item reorder. — **CLOSED.** Export tracked the UI drag. Still no column to verify it from the file.
 Item order differed between two exports with no edits. Unknown whether export order is random,
 creation-order, or tracks the UI after some trigger.
 **Test:** drag two items to swap them in the UI. Export twice, a few minutes apart. Compare item

@@ -9,10 +9,44 @@ Two files analysed:
 | --- | --- | --- | --- | --- |
 | `InterNACHI Residential -2026-09-22.xls` (committed) | 392 | 13 | 69 | 61 |
 | `InterNACHI Residential -2026-09-22_test_comment_format.xls` (committed; same account, one comment rewritten with every editor control) | 392 | 13 | 69 | 61 |
+| `probe-html.xls` (committed; same account plus a probe section exercising every answer format, every category, three recommendations, three photos, special characters, and an empty section and item) | 403 | 14 | 70 | 62 |
+| `probe-plain.xls` (committed; the same template exported as Plain Text seconds later) | 403 | 14 | 70 | 62 |
 | Room-by-Room Residential (second export, generalisation test) | 798 | 22 | 136 | **62** |
 
 Both are 42 columns. The second file exists only to prove the parser rules generalise; it is
 not committed.
+
+---
+
+## 0. Reconfirmation on `probe-html.xls`
+
+Every claim in this document and in `COLUMN-MAP.md` was re-tested against `probe-html.xls`
+alone by `tools/verify_claims.py`, which asserts each one with evidence:
+
+```
+python tools/verify_claims.py probe-html.xls
+probe-html.xls: 75/75 claims PASS
+```
+
+The three analysis tools were also re-run on that file. `tools/invariants.py` now reports one
+deliberate failure, "Answer Type within documented enum", because `signature` is real and the
+header's own list of six is incomplete. That failure is the tool working. `tools/coverage.py`
+had its "constant" heuristic corrected: a column is constant only when it holds one non-empty
+value on every row; a column with a single populated cell is sparse data, not a default.
+
+Coverage on `probe-html.xls` with the corrected tool and the schema as written:
+
+| Measure | Value |
+| --- | --- |
+| Grid | 403 rows × 42 columns = 16,926 cells |
+| Non-empty | 4,753 |
+| Consumed by the schema | 3,544, **74.6%** of non-empty |
+| Not consumed | 1,209, all in `Default Estimate Min`, `Default Estimate Max`, `Uses` |
+| **Non-empty cells not consumed that vary** | **0** |
+
+One finding is new to this pass and is recorded under column L: a `boolean` comment's
+`Default Value` serialises as `true` when ticked and as **`f`** in at least one other state (row
+263), so the column carries two different spellings of a boolean and must not be coerced.
 
 ---
 
@@ -92,12 +126,15 @@ carry `Order = 5`. All six informational comments under `Inspection Details / Ge
 appear in the InterNACHI file in forward alphabetical order with `Order` 0 through 5, and in the
 Room-by-Room file in **reverse** order with `Order` constant at 5.
 
-**Item order is not stable, even across exports of the same account.** The first export of
-this account ordered `Exterior` as `... Eaves, Walkways, Vegetation`. A second export 18 hours
-later ordered it `... Eaves, Vegetation, Walkways`, which matches the Spectora editor. The
-comments inside those two items were not modified in between; their `Last Modified` values are
-unchanged. Nothing in the file distinguishes the two orderings. Section order matched the UI in
-every export examined.
+**Item order follows a persisted order that the file cannot verify.** Three observations.
+The first export ordered `Exterior` as `... Eaves, Walkways, Vegetation` while a UI screenshot
+showed Vegetation first. The second export showed Vegetation first, matching the UI. Then
+Walkways was deliberately dragged above Vegetation in the UI and a third export showed Walkways
+first, **matching the UI again**. So the export does track a persisted item order, and the one
+mismatch is unexplained and may have been an accidental drag in a drag-and-drop interface. The
+engineering conclusion does not change: there is no order column above the comment level, so
+the importer cannot confirm from the file alone that first-appearance order is the current
+display order. Section order matched the UI in every export examined.
 
 **Practical rule:** sort comments by `Order`, tie-break on row position, render type groups as
 Informational, Limitations, Deficiencies. Then **state in the import report that display order
@@ -139,6 +176,9 @@ Only `info` rows vary, carrying `checkbox`, `number`, `text` and one `boolean`.
   with no `<iframe>` inside. Seven identical empty shells in Room-by-Room. **These are artifacts
   of the stock template, not export loss**: a round-trip test proved the export preserves
   Froala video embeds intact. See `PRESERVATION.md` section 4.
+- **Names that contain `<letter…>` are corrupted on export.** `<x>` becomes `<x></x>` in the HTML
+  export and is stripped in the Plain export. The UI shows them correctly. See `COLUMN-MAP.md`,
+  "Name columns".
 - **43 hyperlinks to 20 external hosts.** None are Spectora-hosted, so they will not break on
   migration. Mostly consumer DIY sites, plus `nachi.org`, `youtube.com` and one `porch.com`.
   Many use `http://` rather than `https://`.
@@ -161,6 +201,28 @@ implementation applies, would corrupt data in this file.
   `COLUMN-MAP.md`.
 
 ---
+
+## 6a. The Plain Text export, measured
+
+Same template exported as Plain Text seconds after the HTML export. Differs in columns A (118
+rows), B (156), C (1) and D (213), not in D alone.
+
+What it does to `Comment Text`:
+
+- Removes every tag. Zero rows retain any markup.
+- **Drops all 43 link URLs.** Link text survives; the `href` does not. Unrecoverable.
+- Flattens tables by concatenating cell text with **no separator at all**:
+  `Headline 1Headline 2Headline 3RedBluePurpleone1two2`.
+- Converts `&amp;` to a bare `&` (31 to 0), keeps every U+00A0 (194 to 194), and drops about a
+  sixth of the newlines (306 to 252), so paragraph breaks partly survive and block boundaries do
+  not.
+
+What it does to names: strips anything tag-shaped, leaving the surrounding whitespace, and
+single-encodes `&` where the HTML export double-encodes it.
+
+Detection signals, all measured: no `<` followed by a letter anywhere in column D; no `&amp;` in
+column D after XML decoding; names in A and B carrying a bare `&` after XML decoding rather than
+`&amp;`. Any one is sufficient; check all three and report which fired.
 
 ## 6b. Default Location is a flattened multi-select
 

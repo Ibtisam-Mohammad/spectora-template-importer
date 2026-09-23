@@ -18,28 +18,25 @@ A single "we imported it" figure hides the interesting part. Measured on the com
 
 | Measure | Value | Meaning |
 | --- | --- | --- |
-| **Capture coverage** | **100%** | Every one of 16,464 cells is stored verbatim in `source_row`. Nothing is discarded, ever. |
-| **Model coverage** | **66.0%** | 3,043 of 4,611 non-empty cells are promoted into typed columns. |
-| **Varying-data coverage** | **91.5%** | Of the 1,568 non-empty cells not modelled, all but 392 are constant system defaults. |
+| **Capture coverage** | **100%** | Every cell is stored verbatim in `source_row`. Nothing is discarded, ever. |
+| **Model coverage** | **74.6%** | 3,544 of 4,753 non-empty cells are promoted into typed columns (`probe-html.xls`, schema as written). |
+| **Varying-data coverage** | **100%** | Every non-empty cell whose value differs anywhere in the file is in the model. The 1,209 unconsumed cells are the three constant system-default columns. |
 
 The third number is the honest one, and it decomposes cleanly:
 
 ```
-non-empty cells not modelled           1,568
-  Default Estimate Min = 10  (392)     constant, system default
-  Default Estimate Max = 1000 (392)    constant, system default
-  Uses = 0                    (392)    constant, system default
-  Last Modified               (392)    varies (9 distinct values)
+non-empty cells not consumed           1,209
+  Default Estimate Min = 10  (403)     constant on every row, system default
+  Default Estimate Max = 1000 (403)    constant on every row, system default
+  Uses = 0                    (403)    constant on every row, usage counter
 ```
 
-**Unmodelled is not the same as lost.** Three of those four columns hold a single value on every
-row, so nothing about the customer's template is expressible in them. The only unmodelled column
-that varies is `Last Modified`, which the EDA showed records export time rather than content
-time. Storing it takes one column and pushes varying-data coverage to **100%** — every non-empty
-cell whose value differs anywhere in the file is represented in the model.
-
-Same shape on the second export: 33,516 cells, 68.7% model coverage, the identical four
-unmodelled columns.
+**Unconsumed is not the same as lost.** All three columns hold a single value on every row, so
+nothing about the customer's template is expressible in them. `Last Modified`, which an earlier
+draft of this document left out, is a genuine per-comment save time and is now modelled, which
+is what takes varying-data coverage to 100%. These numbers come from `tools/coverage.py`, whose
+"constant" test requires one non-empty value on *every* row; a column populated on a single row
+is sparse customer data, not a default, and is consumed.
 
 Quoting all three numbers, and saying which one you think matters, is a far stronger answer than
 "nothing was dropped."
@@ -252,10 +249,13 @@ Make detection an explicit step with a named verdict, not an exception:
 
 ```
 SPECTORA_HTML_XLSX   OOXML zip, one sheet, 42 headers matched
-SPECTORA_PLAIN_TEXT  headers match but Comment Text contains no markup in any row
-                     -> accept, warn: "this looks like the Plain Text export; links,
-                        images and styling were stripped by Spectora before you
-                        downloaded it. Re-export with Export HTML Text."
+SPECTORA_PLAIN_TEXT  headers match; no tag in any Comment Text; no &amp; in Comment
+                     Text after XML decode; bare & in section names after XML decode
+                     -> accept, warn: "this is the Plain Text export. Spectora removed
+                        every link URL, every table structure and all formatting
+                        before you downloaded it, and stripped tag-like text from
+                        names. Re-export with Export HTML Text." Then decode names
+                        ONCE (XML only), not twice.
 SPREADSHEET_UNKNOWN  readable spreadsheet, headers do not match
                      -> refuse, list which of the 4 required headers were found
 NOT_A_SPREADSHEET    magic bytes are not a zip / not OOXML
@@ -264,7 +264,15 @@ NOT_A_SPREADSHEET    magic bytes are not a zip / not OOXML
 
 The plain-text case is the valuable one. It is the mistake a real customer makes, Spectora's own
 documentation is ambiguous enough to cause it, and the data loss happened *before* your importer
-ran. Detecting it and saying so is the difference between being blamed and being trusted.
+ran. Measured on a real pair: the Plain export loses **43 of 43 link URLs**, every table
+structure, and all formatting, and it also strips tag-shaped text from section, item and
+comment names. Detecting it and saying so is the difference between being blamed and being
+trusted.
+
+**Detection also decides decoding.** The HTML export double-encodes `&` in every text column;
+the Plain export single-encodes it. A parser that always applies one extra HTML decode is
+correct on HTML exports and corrupts a legitimately typed `&amp;` on Plain exports. Detect
+first, then decode to the variant's depth. Record the variant on `import_run`.
 
 A short **supported formats** table in the UI does the rest of the work: Spectora HTML Text
 supported, Spectora Plain Text accepted with a warning, HomeGauge / Palm-Tech / Home Inspector Pro
@@ -282,8 +290,9 @@ The import report is one screen, and it is the chosen improvement made concrete:
 - **Coverage**, the three numbers, with the varying-data one foregrounded.
 - **Per column**, the ledger: consumed and where it went, constant, not modelled and why,
   unrecognised.
-- **Missing from the export**, quoting Spectora: template settings, section icons, item ordering,
-  photo binaries, conditional show/hide behaviour.
+- **Missing from the export**, quoting Spectora and measured: empty sections and items, template
+  settings, section icons, item ordering, photo binaries, the Location Tags vocabulary, and
+  auto-closed tags appended to any name containing `<letter`.
 - **Warnings that need a human**: duplicate comment names inside one item, ambiguous ordering,
   values outside a documented enum.
 - **Markup**, the inventory, and anything the render policy will neutralise.

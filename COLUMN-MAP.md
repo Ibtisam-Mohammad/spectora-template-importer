@@ -41,10 +41,36 @@ under 8 different sections.
 
 ### Name columns: special characters are accepted
 
-Spectora accepts `&`, `<`, `>` and `"` in section, item and comment names. Verified by creating
-a section `ZZ Probe & Test <x>`, an item `Item & <angle> "quote"` and a comment
-`Smith & Sons <test> "quoted"`, all of which saved and display correctly. Their encoding depth in
-the export is pending a round trip.
+Spectora accepts `&`, `<`, `>` and `"` in section, item and comment names, and the editor
+displays them correctly. **The export does not reproduce them faithfully.**
+
+**Finding: the HTML export auto-closes anything that looks like an HTML tag inside a name.**
+Typed in the UI, and shown correctly there, versus what the export contains:
+
+| Typed | HTML export | Plain export |
+| --- | --- | --- |
+| `ZZ Probe & Test <x>` | `ZZ Probe & Test <x></x>` | `ZZ Probe & Test ` |
+| `Item & <angle> "quote"` | `Item & <angle> "quote"</angle>` | `Item &  "quote"` |
+| `Smith & Sons <test> "quoted"` | `Smith & Sons <test> "quoted"</test>` | `Smith & Sons  "quoted"` |
+
+The names are being run through an HTML parser and re-serialised on the way out: the HTML
+variant appends a closing tag, the Plain variant strips the tag and leaves its surrounding
+whitespace. Only `<` immediately followed by a letter triggers it, since that is what an HTML
+parser treats as a tag; `<50`, `< 50` and `<18 in` are text and pass through. The `</x>` cannot
+be removed safely, because the importer cannot know whether the customer typed it. Report any
+name containing `</` as a warning naming the row.
+
+**Encoding depth differs by export variant, in every text column.** Measured on raw XML:
+
+| Column | HTML export | Plain export |
+| --- | --- | --- |
+| A, B, C names | `&` double (`&amp;amp;`); `<` `>` single; `"` bare | `&` single; tags stripped |
+| D Comment Text | `&` double; tags single-encoded, so real markup after XML decode | `&` single; all tags removed |
+| G choices | single | single |
+
+So "decode names one extra time" is correct for the HTML export and **wrong** for the Plain
+export, where a second decode would turn a legitimately typed `&amp;` into `&`. Detect the variant
+first, then choose the decode depth. See `PRESERVATION.md` section 5.
 
 ### C — `Comment Name`
 The label shown in Spectora's comment list. Plain text. 100% filled, 334 distinct. Repeats are
@@ -78,7 +104,8 @@ Blank on all 78 info and all 12 limit rows. Observed values `0` (281) and `1` (2
 file; `-1` confirmed real in the second export after a comment was set to Low.
 **The UI control is three icon buttons**, shown only when creating or editing a Deficiency:
 a wrench, a minus-in-circle, and a warning triangle. Three buttons, three documented values,
-so the mapping to `-1` / `0` / `1` is positional. Confirmed by opening the create dialog for each
+so the mapping is positional and is now **confirmed by export: wrench = `-1`, minus-in-circle
+= `0`, warning triangle = `1`.** Confirmed by opening the create dialog for each
 type: Informational and Limitation comments show neither this control nor Recommendation, and
 their dialogs are otherwise identical, which is why the column is blank on exactly those rows.
 All seven Answer Formats are offered on all three comment types.
@@ -126,12 +153,27 @@ plus `cabinet` observed in the second export.
 Deficiency create dialog and not in the Informational one. Its first entries are
 `No Recommendation`, `Appliance Repair`, `Builder`, `Cabinet Contractor`, `Carpentry Contractor`,
 `Carpet Cleaner`, `Chimney Repair Contractor`, `Chimney Sweep`, `Cleaning Service`, and it
-scrolls well beyond those: it is a full trade directory. `Cabinet Contractor` is the source of
-the `cabinet` slug, which suggests first-word-lowercased, but `Chimney Repair Contractor` and
-`Chimney Sweep` would collide under that rule, so the real key is something else or Spectora
-tolerates collisions. Either way: **derive nothing, store the slug verbatim, and treat the
-vocabulary as open.** A lookup table from slug to display label is a convenience seeded from
-observed values, never a precondition for import, and an unknown slug displays as itself.
+scrolls well beyond those: it is a full trade directory.
+
+**Slugs are not derivable from labels.** Observed pairs from `probe-html.xls`:
+
+| UI label | Export slug |
+| --- | --- |
+| Cabinet Contractor | `cabinet` |
+| Appliance Repair | `appliance` |
+| Carpet Cleaner | `carpetcleaner` |
+| No Recommendation | *(blank; cell absent)* |
+| *(system default)* | `pro` |
+
+First word for two, both words concatenated for the third. There is no rule. **Derive nothing,
+store the slug verbatim, treat the vocabulary as open.** A slug-to-label table is a display
+convenience seeded from observed values, never a precondition, and an unknown slug displays as
+itself.
+
+**`pro` is a system default applied to every non-deficiency comment.** Every Informational and
+Limitation probe comment carries `pro`, although their dialogs show no Recommendation control.
+It is the only slug that appears on `info` and `limit` rows. This explains the `pro` on
+`Inspection Details / General / Temperature` in the stock file.
 
 Note one observed `pro` sits on an Informational row (`Inspection Details / General /
 Temperature`), so the field can carry a value even where the current UI would not offer it.
@@ -165,11 +207,11 @@ confidence noted:
 | --- | --- | --- | --- |
 | `Checkbox (i.e. Yes/No, Present/Not Present)` | **`boolean`** | "Default to checked?" on edit | strong |
 | `Multiple Choices (i.e. checkboxes)` | **`checkbox`** | "Answer Choices (comma-separated)" | strong |
-| `Date` | `date` | none | assumed |
-| `Number` | `number` | "Unit Type Choices (comma-separated)" | strong |
-| `Numeric Range` | `range` | "Unit Type Choices (comma-separated)" | assumed |
-| `Signature` | **unknown** | none | **untested** |
-| `Text` | `text` | none | assumed |
+| `Date` | `date` | none | **confirmed by export** |
+| `Number` | `number` | "Unit Type Choices (comma-separated)" | **confirmed by export** |
+| `Numeric Range` | `range` | "Unit Type Choices (comma-separated)" | **confirmed by export** |
+| `Signature` | **`signature`** | none | **confirmed by export** |
+| `Text` | `text` | none | **confirmed by export** |
 
 **Which default fields each format exposes**, confirmed by opening one comment of every format:
 
@@ -193,28 +235,38 @@ Options` is populated on exactly the 72 `checkbox` rows and no others, and the U
 "Answer Choices" field only for the "Multiple Choices" format. Anyone mapping the UI's own
 vocabulary onto the export will silently swap two formats.
 
-**`Signature` is a seventh format with no documented export value.** It appears in the dropdown
-but not in the column header's list of six. Until observed, treat any unknown `Answer Type` as
-an `UNEXPECTED_VALUE` import issue and store it verbatim; this is exactly the case the "text,
-not a Postgres enum" decision was made for.
+**`Signature` exports as `signature`, a seventh value the column header does not list.** All
+seven are now observed in a real export (`probe-html.xls`). The header's own enumeration is
+incomplete, which is the concrete case the "text, not a Postgres enum" decision was made for.
+Treat any eighth value the same way: `UNEXPECTED_VALUE` issue, stored verbatim.
 → Maps to `comment.answer_type`. Accept at least seven values, and do not reject an eighth.
 
 ### L — `Default Value`
 Filled on 1 row only (0.3%), value `true`.
 
-**This is the UI's per-format default, and its meaning depends on `Answer Type`.** For the
-`Checkbox (Yes/No)` format the edit view shows a single "Default to checked?" tick, which is the
-source of the lone `true`. The defaults for Number, Numeric Range, Date and Text have not been
-observed and are not present in the create dialog, so they are presumably on the edit view of a
-comment of that format.
+**This is the UI's per-format default, and its meaning depends on `Answer Type`.** Observed in
+`probe-html.xls`: `true` for a `boolean` with "Default to checked?" ticked, `10` for a `range`,
+`42` for a `number`, `hello` for a `text`. Empty for `date`, `signature` and `checkbox`, whose
+edit views have no default field at all.
+
+**Boolean defaults serialise inconsistently.** Across the file the `boolean` rows carry
+`true` ×2, **`f` ×1** (row 263, `Damper Inoperable`) and blank ×317. Two spellings of a boolean
+in one column, presumably a stringified `true` from one code path and a Postgres-style `f` from
+another. Any importer that coerces this column to a boolean on `== 'true'` will read `f` as
+false by accident and any future `t` as false by mistake. Keep it as text.
 → Store verbatim as text. Do not coerce to boolean; the same column holds a number for
 `number`, a date for `date`, and a range floor for `range`.
 
 ### M — `Default Value 2 (for "range" types)`
-**Empty on all 392 rows.** Only meaningful for `range`, which this template never uses.
+**Empty on all 392 rows** of the stock file. Observed as `20` on the one `range` comment in
+`probe-html.xls`, alongside `Default Value` `10`. The range's upper bound. Only reachable from
+the Numeric Range format.
 
 ### N — `Default Unit Type (for "number" and "range" types)`
-**Empty on all 392 rows.**
+**Empty on all 392 rows, and no control for it exists in the UI.** The Number and Numeric Range
+edit views offer "Unit Type Choices" (column H) but no way to pick a default unit. Remained empty
+on the probe `range` and `number` comments even with unit choices filled in. Same class as R, S
+and T: expect it permanently empty for UI-authored templates.
 
 ### O — `Default Location`
 **Empty on all 392 rows** of the stock file. Populated in the second export.
@@ -285,9 +337,14 @@ web UI. Documented as `true`/`false`.
 ### V–AO — `Default Photo 1..10` and `Default Photo N Caption`
 Twenty columns, interleaved photo then caption. **Every one empty on all 392 rows.**
 These are **Spectora CDN URLs**, observed as
-`https://cdn.spectora.com/default_photos/images/.../original/<name>.png?<cachebuster>`, with the
-caption in the adjacent column. **No image binary is carried by the export**, and the URL dies
-with the customer's Spectora account. Fetch at import. See `PRESERVATION.md` section 4.
+`https://cdn.spectora.com/default_photos/images/005/622/660/original/three.jpg?1790141917`, with
+the caption in the adjacent column. **No image binary is carried by the export**, and the URL
+dies with the customer's Spectora account. Fetch at import. See `PRESERVATION.md` section 4.
+
+Three photos fill V, X, Z with captions in W, Y, AA, as expected. **The order is newest-first.**
+Photos added as `one`, `two`, `three` exported as Photo 1 = `three`, Photo 2 = `two`, Photo 3 =
+`one`. The original filename survives in the URL path; a phone upload became
+`image_created_with_a_mobile_phone.png`.
 Note Spectora's published import format documents only Photos 1–3; real exports emit 1–10.
 
 ### AP — `Last Modified`
@@ -336,6 +393,10 @@ correct.
 
 The "missing from the export" bucket, evidenced rather than assumed.
 
+- **Empty sections and empty items.** Rows are comments, so a section with no items or an item
+  with no comments produces no rows and **vanishes from the export**. Confirmed: a section
+  `ZZ Empty` and an item `ZZ Empty Item` were created and neither appears in either export
+  variant. The customer's structure is silently truncated to whatever holds a comment.
 - **Template name.** No column. Survives only in the filename.
 - **The Location Tags vocabulary.** Account-level under Settings > Location Tags. Only the
   composed per-comment string is exported, and it cannot be decomposed without the list.

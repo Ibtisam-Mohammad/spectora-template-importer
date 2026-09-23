@@ -167,6 +167,7 @@ create table import_run (
   template_id      uuid not null references template(id) on delete cascade,
   source_filename  text not null,
   source_sha256    text not null,
+  source_variant   text not null,     -- 'html' | 'plain'; decides decode depth
   parser_version   text not null,
   rows_total       integer not null,
   rows_imported    integer not null,
