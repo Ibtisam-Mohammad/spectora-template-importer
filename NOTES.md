@@ -2,7 +2,7 @@
 
 Notes for the Hive Inspect template-importer assignment.
 
-> Two sections are marked TODO: the Hive trial and the time spent. Both need the author's own account.
+> One section is marked TODO: the time spent, which needs the author's own account.
 
 ---
 
@@ -10,7 +10,74 @@ Notes for the Hive Inspect template-importer assignment.
 
 ### Hive Inspect
 
-TODO: trial signup, sample inspection, published report, template-import walkthrough.
+**What I did.** I signed up for the trial, ran a sample inspection and published a report.
+Then I imported two of this repo's exports through Hive's own importer and compared what arrived
+with what the files contain:
+
+- `internachi-residential-rich-comment.xls`, the stock template plus one comment written with
+  every control in Spectora's editor;
+- `probe-html.xls`, which adds every answer format, special characters and three photos.
+
+**The import dialog.** It names four sources:
+
+- Spectora;
+- Home Inspector Pro;
+- HomeGauge;
+- Horizon (Carson Dunlop).
+
+For anything else it offers help through chat. It accepts `.xls` and `.xlsx`, but does not say
+which Spectora export to use, HTML Text or Plain Text.
+
+An **Import cost estimates** option warns that stock Spectora templates repeat one default
+range on every comment. That matches what we measured: 10 to 1000 on every row. While the
+import runs, a screen says it is downloading and uploading images, so default photos are
+copied, as they are here.
+
+**What Hive's importer got right**
+
+- Structure: 13 sections, 69 subsections and 392 comments, in the file's order. Both comments
+  named "Damper Inoperable" were kept.
+- Rich text: sized and coloured text, bold, italic, underline, links and lists. Tables keep
+  their merged cells, cell colours and alignment.
+- Answer choices, such as the four options of "In Attendance".
+- A Checkbox comment whose default is `true` becomes a Checkbox Item with "Auto-select"
+  ticked.
+- Severity maps onto Hive's own categories: Low became Maintenance Items.
+- Recommendation codes become names: `cabinet` shows as Cabinet Contractor, and
+  `carpetcleaner` as Carpet Cleaner. Hive must hold Spectora's standard list. This app shows
+  the code, because the export carries no names.
+- Default photos arrive, in the export's order.
+
+**What it lost or changed, without saying so**
+
+| In the export | In Hive |
+| --- | --- |
+| A Vimeo embed inside a comment | Gone. Its list item is empty. |
+| Table styling from Spectora's editor: dashed borders, alternate-row shading, highlighted and thick cells, header shading | A plain grid. |
+| A Number answer with units ("Temperature": Fahrenheit, Celsius) | A Text field. The units are gone. |
+| A Numeric Range with units (10 to 20, inches or feet) | A Text field with default 10. The upper value and the units are gone. |
+| A comment name containing `&` (the export double-encodes it) | The list shows `Smith & Sons`, but the edit field shows `Smith &amp; Sons`. Item names with the same encoding are decoded correctly. |
+
+After the upload, the only message is "Template Saved". Nothing tells the inspector what was
+changed or dropped, so they would find out one comment at a time.
+
+**Not checked:**
+
+- whether default locations and photo captions arrive, since neither showed in the edit form;
+- the Date and Signature answer formats.
+
+**What Hive could do better**
+
+1. **Say what the import did.** Show counts in and out, and every change or loss, named by
+   comment. This app's template report is that idea.
+2. **Keep the answer formats.** Number and Numeric Range should keep their units and both
+   defaults, not become Text.
+3. **Decode comment names the way item names already are**, so no `&amp;` reaches an
+   inspector.
+4. **Keep embeds and the table styling Spectora's editor writes,** or say that they were
+   dropped.
+5. **Name the export in the dialog and the docs:** Export to spreadsheet, then Export HTML
+   Text.
 
 **What the documentation says about importing from Spectora.** The public docs at
 `docs.hiveinspect.com/templates/inspection-templates` cover the Spectora path in a single
@@ -21,7 +88,8 @@ limitations.
 
 That matters because the instruction is ambiguous against Spectora's actual UI. Spectora
 offers **Export to spreadsheet** with two variants, **Export Plain Text** and **Export HTML
-Text**, and both produce an `.xlsx`, not an HTML file. A user following Hive's docs literally
+Text**, and both download as a spreadsheet: a file named `.xls` that is really an `.xlsx`
+workbook, not an HTML file. A user following Hive's docs literally
 would look for an HTML export, not a spreadsheet, and the assignment itself has to specify
 "Export to spreadsheet → Export HTML Text" and warn against the plain-text variant. Naming
 the exact path in the docs would remove the most likely first-run failure.
@@ -101,6 +169,9 @@ Explored Binsr alongside Hive. Observations are from the trial, not from documen
 - **Trust before automation.** Binsr's choice between manual and AI import says the user wants
   to see and control what the importer did. This importer takes the other half of that idea:
   no model, a deterministic parser, and a report that shows its working.
+- **Hive's own importer confirms the gap.** It parses well, but changed answer formats and
+  dropped an embed without a word. What is missing there is not parsing; it is telling the
+  inspector what happened, which is the improvement this app chose.
 - **Name the export path.** Hive's docs say "export in HTML format" and never name the menu. The
   upload form here names it: Export to spreadsheet, then Export HTML Text. If the Plain Text
   export arrives anyway, it is recognised and flagged.
