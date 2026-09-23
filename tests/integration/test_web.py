@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from html import escape
 from html import unescape as html_unescape
 
@@ -223,11 +224,30 @@ def test_headings_and_fields_carry_guidance(client, conn):
 def test_the_form_suggests_values_this_template_already_uses(client, conn):
     tree = imported(client, conn, PROBE_HTML)
     page = client.get(f"/t/{tree.id}").text
-    used = sorted({c.recommendation for c in tree.comments() if c.recommendation.strip()})
+    used = Counter(c.recommendation for c in tree.comments() if c.recommendation.strip())
     listed = page.split('<datalist id="suggest-recommendation">', 1)[1].split("</datalist>", 1)[0]
-    assert sorted(html_unescape(v) for v in re.findall(r'<option value="([^"]*)">', listed)) == used
+    options = re.findall(r'<option value="([^"]*)" data-count="(\d+)">', listed)
+    assert {html_unescape(value): int(count) for value, count in options} == dict(used)
+    counts = [int(count) for _, count in options]
+    assert counts == sorted(counts, reverse=True), "most used first"
     assert len(used) > 1
-    assert 'list="suggest-recommendation"' in page
+    assert 'data-combo="suggest-recommendation"' in page
+
+
+def test_every_filled_cell_of_the_source_row_is_on_the_card(client, conn):
+    tree = imported(client, conn, PROBE_HTML)
+    section = tree.sections[0]
+    item = section.items[0]
+    comment = item.comments[0]
+    page = client.get(f"/t/{tree.id}?section={section.id}&item={item.id}").text
+    card = page.split(f'id="comment-{comment.id}"', 1)[1]
+    table = card.split('class="grid source-cells"', 1)[1].split("</table>", 1)[0]
+    row = conn.execute(
+        "select raw from source_row where row_number = %s", [comment.source_row_number]
+    ).fetchone()[0]
+    filled = [value for value in row.values() if value]
+    assert table.count("<tr") - 1 == len(filled)
+    assert "not a field" not in table
 
 
 def test_a_copy_links_to_its_originals_import_results(client, conn):

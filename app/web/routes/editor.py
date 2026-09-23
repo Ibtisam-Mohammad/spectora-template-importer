@@ -5,6 +5,7 @@ swap only the parts that changed, so a click keeps the scroll position of the pa
 in, and the same URL loaded directly, or restored from history, renders the same page.
 """
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import Annotated
 from urllib.parse import urlencode
@@ -15,14 +16,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.db.records import StoredComment, StoredItem, StoredTemplate
-from app.db.templates import issues_by_node, latest_run_id, read_tree
+from app.db.templates import issues_by_node, latest_run_id, read_tree, source_rows_for_item
 from app.services.editing import CommentResult
 from app.spectora.columns import (
     ANSWER_TYPE_LABELS,
     CATEGORY_LABELS,
     COMMENT_TYPE_LABELS,
     COMMENT_TYPES,
+    map_columns,
 )
+from app.spectora.workbook import HEADER_ROW, column_index, workbook_from_rows
 from app.web.database import db
 from app.web.templating import templates
 
@@ -89,6 +92,12 @@ def render_editor(
             "open_comment": open_comment,
             "result": result,
             "suggestions": suggestions(tree),
+            "source_rows": {
+                comment_id: source_cells(header, cells)
+                for comment_id, (header, cells) in (
+                    source_rows_for_item(conn, item.id) if item else {}
+                ).items()
+            },
             "comment_types": COMMENT_TYPE_LABELS,
             "answer_types": ANSWER_TYPE_LABELS,
             "categories": CATEGORY_LABELS,
@@ -104,15 +113,38 @@ def render_editor(
 SUGGESTED_FIELDS = ("recommendation", "default_location", "default_unit_type")
 
 
-def suggestions(tree: StoredTemplate) -> dict[str, list[str]]:
-    """Each suggested field's distinct values in this template, for the form's pick lists."""
+def suggestions(tree: StoredTemplate) -> dict[str, list[tuple[str, int]]]:
+    """Each suggested field's values in this template with how many comments use each, most
+    used first, for the form's pick lists."""
     return {
         field: sorted(
-            {value for comment in tree.comments() if (value := getattr(comment, field)).strip()},
-            key=lambda value: value.strip().casefold(),
+            Counter(
+                value for comment in tree.comments() if (value := getattr(comment, field)).strip()
+            ).items(),
+            key=lambda pair: (-pair[1], pair[0].strip().casefold()),
         )
         for field in SUGGESTED_FIELDS
     }
+
+
+@dataclass(frozen=True)
+class SourceCell:
+    column: str
+    header: str
+    value: str
+    field: str | None
+    """The field the cell was imported into, or None when its column has none."""
+
+
+def source_cells(header: dict[str, str | None], cells: dict[str, str | None]) -> list[SourceCell]:
+    """Every filled cell of a source row, in column order, with the field it went into."""
+    columns = map_columns(workbook_from_rows({HEADER_ROW: header}))
+    field_of = {letter: field for field, letter in columns.fields.items()}
+    return [
+        SourceCell(column, header.get(column) or "", value, field_of.get(column))
+        for column, value in sorted(cells.items(), key=lambda cell: column_index(cell[0]))
+        if value
+    ]
 
 
 def _selected[Node](nodes: tuple[Node, ...], wanted: UUID | None) -> Node | None:

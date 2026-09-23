@@ -3,6 +3,15 @@
 {% set this_result = result if result and result.comment_id == comment.id else none %}
 {% set card = "#comment-" ~ comment.id %}
 {% set base = "/comments/" ~ comment.id %}
+{#- A text field with a dropdown of the values this template already uses. -#}
+{% macro picker(name, value) -%}
+<span class="combo">
+  <input name="{{ name }}" value="{{ value }}" data-combo="suggest-{{ name }}" autocomplete="off"
+         role="combobox" aria-expanded="false" aria-autocomplete="list">
+  <button type="button" class="combo-toggle" tabindex="-1" aria-label="Show the values this template uses">&#9662;</button>
+  <span class="combo-list" role="listbox" hidden></span>
+</span>
+{%- endmacro %}
 <details class="comment" id="comment-{{ comment.id }}"{% if comment.id == open_comment %} open{% endif %}>
   <summary>
     <span class="answer">{{ comment.answer_type | answer_label }}</span>
@@ -34,11 +43,14 @@
         <button type="button" class="link-button" data-edit-body>Edit text</button>
       </div>
 
-      <div class="form-grid">
-        <label class="wide"><span class="label-text">Name {{ tip(help.name) }}</span>
+      {#- Fields with data-order move between the main grid and "Other fields": the answer format
+          and comment type decide which belong in the main grid, as in Spectora's editor, and the
+          rest stay one click away so every field can be filled. -#}
+      <div class="form-grid" data-main-fields>
+        <label class="wide" style="order: 1"><span class="label-text">Name {{ tip(help.name) }}</span>
           <input name="name" value="{{ comment.name }}" required>
         </label>
-        <label><span class="label-text">Comment type {{ tip(help.comment_type) }}</span>
+        <label style="order: 2"><span class="label-text">Comment type {{ tip(help.comment_type) }}</span>
           <select name="comment_type" data-comment-type>
             {% for value, label in comment_types.items() %}
             <option value="{{ value }}"{% if value == comment.comment_type %} selected{% endif %}>{{ label }}</option>
@@ -48,7 +60,7 @@
             {% endif %}
           </select>
         </label>
-        <label><span class="label-text">Answer format {{ tip(help.answer_type) }}</span>
+        <label style="order: 3"><span class="label-text">Answer format {{ tip(help.answer_type) }}</span>
           <select name="answer_type" data-answer-format data-known="{{ answer_types.keys() | join(' ') }}">
             {% if not comment.answer_type %}<option value="" selected>Not set</option>{% endif %}
             {% for value, label in answer_types.items() %}
@@ -59,24 +71,24 @@
             {% endif %}
           </select>
         </label>
-        <label data-formats="checkbox"{% if comment.choices %} data-keep{% endif %}><span class="label-text">Answer choices {{ tip(help.choices) }}</span>
+        <label data-order="10" data-formats="checkbox"{% if comment.choices %} data-keep{% endif %}><span class="label-text">Answer choices {{ tip(help.choices) }}</span>
           <input name="choices" value="{{ comment.choices | join(', ') }}">
           <small>Separate choices with commas.</small>
         </label>
-        <label data-formats="number range"{% if comment.unit_options %} data-keep{% endif %}><span class="label-text">Unit type choices {{ tip(help.unit_options) }}</span>
+        <label data-order="11" data-formats="number range"{% if comment.unit_options %} data-keep{% endif %}><span class="label-text">Unit type choices {{ tip(help.unit_options) }}</span>
           <input name="unit_options" value="{{ comment.unit_options | join(', ') }}">
           <small>Separate units with commas.</small>
         </label>
-        <label data-formats="boolean number range text"{% if comment.default_value %} data-keep{% endif %}><span class="label-text">Default value {{ tip(help.default_value) }}</span>
+        <label data-order="12" data-formats="boolean number range text"{% if comment.default_value %} data-keep{% endif %}><span class="label-text">Default value {{ tip(help.default_value) }}</span>
           <input name="default_value" value="{{ comment.default_value }}">
         </label>
-        <label data-formats="range"{% if comment.default_value_2 %} data-keep{% endif %}><span class="label-text">Default value 2 {{ tip(help.default_value_2) }}</span>
+        <label data-order="13" data-formats="range"{% if comment.default_value_2 %} data-keep{% endif %}><span class="label-text">Default value 2 {{ tip(help.default_value_2) }}</span>
           <input name="default_value_2" value="{{ comment.default_value_2 }}">
         </label>
-        <label data-formats="number range"{% if comment.default_unit_type %} data-keep{% endif %}><span class="label-text">Default unit {{ tip(help.default_unit_type) }}</span>
-          <input name="default_unit_type" value="{{ comment.default_unit_type }}" list="suggest-default_unit_type" autocomplete="off">
+        <label data-order="14" data-formats="number range"{% if comment.default_unit_type %} data-keep{% endif %}><span class="label-text">Default unit {{ tip(help.default_unit_type) }}</span>
+          {{ picker("default_unit_type", comment.default_unit_type) }}
         </label>
-        <label data-types="defect"{% if comment.category %} data-keep{% endif %}><span class="label-text">Severity {{ tip(help.category) }}</span>
+        <label data-order="15" data-types="defect"{% if comment.category %} data-keep{% endif %}><span class="label-text">Severity {{ tip(help.category) }}</span>
           <select name="category">
             <option value=""{% if not comment.category %} selected{% endif %}>Not set</option>
             {% for value, label in categories.items() %}
@@ -87,25 +99,24 @@
             {% endif %}
           </select>
         </label>
-        <label data-types="defect"{% if comment.recommendation %} data-keep{% endif %}><span class="label-text">Recommendation {{ tip(help.recommendation) }}</span>
-          <input name="recommendation" value="{{ comment.recommendation }}" list="suggest-recommendation" autocomplete="off">
+        <label data-order="16" data-types="defect"{% if comment.recommendation %} data-keep{% endif %}><span class="label-text">Recommendation {{ tip(help.recommendation) }}</span>
+          {{ picker("recommendation", comment.recommendation) }}
         </label>
-        <label class="wide"><span class="label-text">Location {{ tip(help.default_location) }}</span>
-          <input name="default_location" value="{{ comment.default_location }}" list="suggest-default_location" autocomplete="off">
+        <label class="wide" style="order: 90"><span class="label-text">Location {{ tip(help.default_location) }}</span>
+          {{ picker("default_location", comment.default_location) }}
         </label>
       </div>
 
       <details class="more-fields">
-        <summary>More fields {{ tip(help.more) }}</summary>
-        <div class="form-grid">
-          <label><span class="label-text">Estimate minimum {{ tip(help.estimate) }}</span><input name="estimate_min" value="{{ comment.estimate_min }}"></label>
-          <label><span class="label-text">Estimate maximum</span><input name="estimate_max" value="{{ comment.estimate_max }}"></label>
-          <label><span class="label-text">Locked</span><input name="locked" value="{{ comment.locked }}"></label>
-          <label><span class="label-text">Simple format</span><input name="simple_format" value="{{ comment.simple_format }}"></label>
-          <label><span class="label-text">Disable photos</span><input name="disable_photos" value="{{ comment.disable_photos }}"></label>
-          <label><span class="label-text">Uses</span><input name="uses" value="{{ comment.uses }}"></label>
+        <summary>Other fields (<span data-other-count>6</span>) {{ tip(help.more) }}</summary>
+        <div class="form-grid" data-other-fields>
+          <label style="order: 50"><span class="label-text">Estimate minimum {{ tip(help.estimate) }}</span><input name="estimate_min" value="{{ comment.estimate_min }}"></label>
+          <label style="order: 51"><span class="label-text">Estimate maximum</span><input name="estimate_max" value="{{ comment.estimate_max }}"></label>
+          <label style="order: 52"><span class="label-text">Locked</span><input name="locked" value="{{ comment.locked }}"></label>
+          <label style="order: 53"><span class="label-text">Simple format</span><input name="simple_format" value="{{ comment.simple_format }}"></label>
+          <label style="order: 54"><span class="label-text">Disable photos</span><input name="disable_photos" value="{{ comment.disable_photos }}"></label>
+          <label style="order: 55"><span class="label-text">Uses</span><input name="uses" value="{{ comment.uses }}"></label>
         </div>
-        <p class="muted">These hold Spectora's values as exported and are kept as text.</p>
       </details>
 
       <div class="form-actions">
@@ -150,6 +161,24 @@
       </form>
     </div>
 
+    {% set cells = source_rows.get(comment.id) %}
+    {% if cells %}
+    <details class="source-row">
+      <summary>Row {{ comment.source_row_number }} in the file {{ tip(help.source_row) }}</summary>
+      <table class="grid source-cells">
+        <thead><tr><th>Column</th><th>Header</th><th>As exported</th></tr></thead>
+        <tbody>
+          {% for cell in cells %}
+          <tr{% if not cell.field %} class="unmapped"{% endif %}>
+            <td>{{ cell.column }}</td>
+            <td>{{ cell.header or "(no header)" }}{% if not cell.field %}<br><span class="badge badge-note">not a field</span>{% endif %}</td>
+            <td><code class="cell-raw">{{ cell.value }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% endif %}
     {% if comment.source_row_number %}
     <p class="provenance">Imported from row {{ comment.source_row_number }}{% if comment.source_last_modified %}, last changed in Spectora {{ comment.source_last_modified }}{% endif %}.{% if comment.body_edited_at %} Text edited here {{ comment.body_edited_at | when }}.{% endif %}</p>
     {% else %}

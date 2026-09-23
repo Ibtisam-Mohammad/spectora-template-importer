@@ -112,23 +112,29 @@
     if (editors().some(isDirty)) event.preventDefault();
   });
 
-  // Which fields a form shows follows Spectora's editor: the answer format decides the answer
-  // fields, and severity and recommendation belong to deficiencies. A field that holds a value
-  // is always shown. No answer format shows no answer fields; a format Spectora does not
-  // document shows them all, since it is unknown which apply.
+  // Where a field sits follows Spectora's editor: the answer format decides the answer fields,
+  // and severity and recommendation belong to deficiencies. Those fields sit in the main grid;
+  // the rest wait under "Other fields", so every field can still be filled. A field holding a
+  // value always stays in the main grid. A format Spectora does not document keeps every answer
+  // field there, since it is unknown which apply. CSS order keeps each grid in a fixed order.
   function showFields(form) {
     const format = form.querySelector("[data-answer-format]");
     const type = form.querySelector("[data-comment-type]");
+    const main = form.querySelector("[data-main-fields]");
+    const other = form.querySelector("[data-other-fields]");
     const known = (format.dataset.known || "").split(" ");
     const undocumented = format.value !== "" && !known.includes(format.value);
-    for (const field of form.querySelectorAll("[data-formats]")) {
-      const applies = field.dataset.formats.split(" ").includes(format.value);
-      field.hidden = !(field.hasAttribute("data-keep") || applies || undocumented);
+    for (const field of form.querySelectorAll("[data-order]")) {
+      field.style.order = field.dataset.order;
+      let belongs = field.hasAttribute("data-keep");
+      if (field.dataset.formats) {
+        belongs ||= undocumented || field.dataset.formats.split(" ").includes(format.value);
+      }
+      if (field.dataset.types) belongs ||= field.dataset.types.split(" ").includes(type.value);
+      const home = belongs ? main : other;
+      if (field.parentElement !== home) home.append(field);
     }
-    for (const field of form.querySelectorAll("[data-types]")) {
-      const applies = field.dataset.types.split(" ").includes(type.value);
-      field.hidden = !(field.hasAttribute("data-keep") || applies);
-    }
+    form.querySelector("[data-other-count]").textContent = other.children.length;
   }
 
   document.addEventListener("change", (event) => {
@@ -140,6 +146,115 @@
     const forms = root.matches?.("form.comment-form") ? [root] : [];
     forms.push(...(root.querySelectorAll?.("form.comment-form") ?? []));
     forms.forEach(showFields);
+  });
+
+  // Pick lists: a text field with a dropdown of the values this template already uses (from a
+  // datalist in the comments pane), most used first. The arrow or a click shows them all; typing
+  // narrows them; anything typed is kept, so a new value is always possible.
+  function comboValues(input) {
+    const source = document.getElementById(input.dataset.combo);
+    return source ? [...source.options].map((o) => ({ value: o.value, count: o.dataset.count })) : [];
+  }
+
+  function comboOption(value, count, selected) {
+    const option = document.createElement("span");
+    option.className = "combo-option";
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", String(selected));
+    option.dataset.value = value;
+    const label = document.createElement("span");
+    label.textContent = value.trim();
+    const uses = document.createElement("span");
+    uses.className = "combo-count";
+    uses.textContent = count === "1" ? "1 comment" : count + " comments";
+    option.append(label, uses);
+    return option;
+  }
+
+  function openCombo(combo, narrow) {
+    const input = combo.querySelector("input");
+    const list = combo.querySelector(".combo-list");
+    const query = narrow ? input.value.trim().toLowerCase() : "";
+    const values = comboValues(input).filter((v) => v.value.trim().toLowerCase().includes(query));
+    list.replaceChildren(...values.map((v) => comboOption(v.value, v.count, v.value === input.value)));
+    if (!values.length) {
+      const empty = document.createElement("span");
+      empty.className = "combo-empty";
+      empty.textContent = query
+        ? "Not used elsewhere in this template. What you typed is kept."
+        : "No values used in this template yet. Type one.";
+      list.append(empty);
+    }
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  }
+
+  function closeCombos(except) {
+    for (const combo of document.querySelectorAll(".combo")) {
+      if (combo === except) continue;
+      combo.querySelector(".combo-list").hidden = true;
+      combo.querySelector("input").setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function pick(option) {
+    const input = option.closest(".combo").querySelector("input");
+    input.value = option.dataset.value;
+    closeCombos();
+    input.focus();
+  }
+
+  document.addEventListener("mousedown", (event) => {
+    const option = event.target.closest(".combo-option");
+    if (option) {
+      event.preventDefault();
+      pick(option);
+      return;
+    }
+    const combo = event.target.closest(".combo");
+    closeCombos(combo);
+    if (!combo) return;
+    const list = combo.querySelector(".combo-list");
+    if (event.target.closest(".combo-toggle")) {
+      event.preventDefault();
+      if (list.hidden) openCombo(combo, false);
+      else closeCombos();
+      combo.querySelector("input").focus();
+    } else if (event.target.matches("input") && list.hidden) {
+      openCombo(combo, false);
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    const combo = event.target.closest?.(".combo");
+    if (combo) openCombo(combo, true);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const combo = event.target.closest?.(".combo");
+    if (!combo) return;
+    const list = combo.querySelector(".combo-list");
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (list.hidden) openCombo(combo, false);
+      const options = [...list.querySelectorAll(".combo-option")];
+      const active = list.querySelector(".combo-option.active");
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      const next = options[(options.indexOf(active) + step + options.length) % options.length];
+      active?.classList.remove("active");
+      next?.classList.add("active");
+      next?.scrollIntoView({ block: "nearest" });
+    } else if (event.key === "Enter" && !list.hidden) {
+      const active = list.querySelector(".combo-option.active");
+      event.preventDefault();
+      if (active) pick(active);
+      else closeCombos();
+    } else if (event.key === "Escape" && !list.hidden) {
+      event.preventDefault();
+      closeCombos();
+    } else if (event.key === "Tab") {
+      closeCombos();
+    }
   });
 
   // After the comments pane is replaced (a comment moved to another heading, was added, or was

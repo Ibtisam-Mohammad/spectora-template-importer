@@ -17,6 +17,7 @@ from app.db.records import (
     StoredTemplate,
     TemplateSummary,
 )
+from app.spectora.workbook import HEADER_ROW
 
 _COMMENT_COLUMNS = (
     "position",
@@ -204,3 +205,19 @@ def latest_run_id(conn: psycopg.Connection, template_id: UUID) -> UUID | None:
         {"t": template_id},
     ).fetchone()
     return row[0] if row else None
+
+
+def source_rows_for_item(
+    conn: psycopg.Connection, item_id: UUID
+) -> dict[UUID, tuple[dict[str, str | None], dict[str, str | None]]]:
+    """For each imported comment of an item, the header and the cells of its source row."""
+    rows = conn.execute(
+        "select c.id, header.raw, source.raw from comment c"
+        " join source_row source on source.import_run_id = c.import_run_id"
+        "  and source.row_number = c.source_row_number"
+        " join source_row header on header.import_run_id = c.import_run_id"
+        "  and header.row_number = %s"
+        " where c.item_id = %s",
+        [HEADER_ROW, item_id],
+    ).fetchall()
+    return {comment_id: (header, cells) for comment_id, header, cells in rows}

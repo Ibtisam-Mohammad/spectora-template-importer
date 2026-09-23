@@ -165,9 +165,16 @@ to Spectora to fix something the import could not settle.
 - **Guidance where it is needed.** A "?" on each heading and field explains it in plain words,
   including the ones Spectora's export leaves cryptic, such as the recommendation code `pro`.
   Import notes appear above the items or comments they concern, not only in the report.
-- **Suggestions from the template itself.** Recommendation, location and unit fields offer the
-  values this template already uses, and anything else can still be typed. Spectora keeps the
-  full lists in the account, not in the export, so a fixed list would be invented.
+- **Pick lists from the template itself.** Recommendation, location and default unit open a
+  dropdown of the values this template already uses, most used first, and anything else can
+  still be typed. Spectora keeps the full lists in the account, not in the export, so a fixed
+  list would be invented. Location is offered as the whole value each comment uses, because
+  Spectora joins tags with spaces and tags themselves contain spaces (rule V7).
+- **No field out of reach.** Fields the chosen answer format does not use wait under "Other
+  fields" rather than disappearing, so the inspector can still fill them.
+- **The file's own row, on every comment.** Each card lists every filled cell of its source
+  row as exported, and marks any cell that did not go into a field. Nothing from the file is
+  shown as an empty field.
 
 It is a working surface, not the chosen improvement. It is kept to what migration needs: no
 AI writing help, no search, no bulk edit (see below).
