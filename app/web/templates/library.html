@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Templates{% endblock %}
+{% block main %}
+<section class="page">
+  <h1>Templates</h1>
+  {% if not templates %}
+  <p class="empty">No templates yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
