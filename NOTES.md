@@ -2,8 +2,6 @@
 
 Notes for the Hive Inspect template-importer assignment.
 
-> One section is marked TODO: the time spent, which needs the author's own account.
-
 ---
 
 ## Product exploration
@@ -479,7 +477,9 @@ The analysis scripts in `tools/` are part of the repo for that reason.
 
 ## Time spent
 
-TODO: approximate hours for exploration, analysis, building, deployment and the walkthrough.
+About 15 hours over two days, 22 and 23 September 2026. Most of it went into understanding
+Spectora's format before writing code; with the rules, fixtures and probe exports settled
+first, the build itself took about 90 minutes.
 
 ---
 
