@@ -17,7 +17,7 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-from app.config import MEGABYTE
+from app.config import MEGABYTE, Settings
 from app.spectora.model import ColumnMap, Issue, IssueKind, ParsedTemplate, Scope, Severity
 
 PHOTO_HOST = "cdn.spectora.com"
@@ -77,6 +77,9 @@ class SupabaseStorage:
         )
         return cls(client, bucket)
 
+    def close(self) -> None:
+        self._client.close()
+
     def put(self, key: str, data: bytes, content_type: str) -> None:
         response = self._client.post(
             f"/storage/v1/object/{quote(self._bucket)}/{quote(key)}",
@@ -105,6 +108,10 @@ class PhotoCopier:
     def connect(cls, storage: SupabaseStorage) -> "PhotoCopier":
         fetcher = httpx.Client(follow_redirects=False, timeout=FETCH_TIMEOUT_SECONDS)
         return cls(fetcher, storage)
+
+    def close(self) -> None:
+        self._fetcher.close()
+        self._storage.close()
 
     def copy_all(self, urls: Iterable[str]) -> dict[str, PhotoCopy]:
         """Copy each distinct URL once, in parallel, within the import's time budget."""
@@ -152,6 +159,28 @@ class PhotoCopier:
                     raise _Refused(f"it is larger than {MAX_PHOTO_BYTES // MEGABYTE} MB")
                 chunks.append(chunk)
         return b"".join(chunks), content_type
+
+
+def configured_storage(settings: Settings) -> SupabaseStorage | None:
+    """Storage from the environment, or None when it is not set up."""
+    if settings.supabase_url is None or settings.supabase_secret_key is None:
+        return None
+    return SupabaseStorage.connect(
+        settings.supabase_url, settings.supabase_secret_key, settings.photo_bucket
+    )
+
+
+def configured_copier(settings: Settings) -> PhotoCopier | None:
+    storage = configured_storage(settings)
+    return PhotoCopier.connect(storage) if storage else None
+
+
+def public_url(settings: Settings, stored_path: str) -> str | None:
+    """Where the browser loads a stored copy from. The bucket is public."""
+    if settings.supabase_url is None:
+        return None
+    base = settings.supabase_url.rstrip("/")
+    return f"{base}/storage/v1/object/public/{quote(settings.photo_bucket)}/{quote(stored_path)}"
 
 
 def photo_urls(template: ParsedTemplate) -> list[str]:

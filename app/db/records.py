@@ -89,3 +89,14 @@ class TemplateSummary:
     items: int
     comments: int
     latest_run_id: UUID | None
+
+
+@dataclass(frozen=True)
+class NodeIssue:
+    """An import issue as the editor shows it on the node it is about."""
+
+    kind: str
+    severity: str
+    detail: str
+    row_number: int | None
+    column_letter: str | None

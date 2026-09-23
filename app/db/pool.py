@@ -6,6 +6,7 @@ serverless instances; the pooler does the pooling. Connections are in autocommit
 every multi-statement change runs inside an explicit `conn.transaction()` in the services.
 """
 
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -15,6 +16,7 @@ from psycopg_pool import NullConnectionPool
 CONNECTION_OPTIONS = {"autocommit": True, "prepare_threshold": None}
 
 _pool: NullConnectionPool | None = None
+_pool_lock = threading.Lock()
 
 
 def connect(url: str) -> psycopg.Connection:
@@ -22,22 +24,20 @@ def connect(url: str) -> psycopg.Connection:
     return psycopg.connect(url, **CONNECTION_OPTIONS)
 
 
-def open_pool(url: str) -> None:
+@contextmanager
+def pooled_connection(url: str) -> Iterator[psycopg.Connection]:
+    """A connection from the process-wide pool, which opens on first use."""
     global _pool
-    if _pool is None:
-        _pool = NullConnectionPool(url, max_size=4, kwargs=CONNECTION_OPTIONS, open=True)
+    with _pool_lock:
+        if _pool is None:
+            _pool = NullConnectionPool(url, max_size=4, kwargs=CONNECTION_OPTIONS, open=True)
+    with _pool.connection() as conn:
+        yield conn
 
 
 def close_pool() -> None:
     global _pool
-    if _pool is not None:
-        _pool.close()
-        _pool = None
-
-
-@contextmanager
-def pooled_connection() -> Iterator[psycopg.Connection]:
-    if _pool is None:
-        raise RuntimeError("The database is not configured. Set DATABASE_URL.")
-    with _pool.connection() as conn:
-        yield conn
+    with _pool_lock:
+        if _pool is not None:
+            _pool.close()
+            _pool = None

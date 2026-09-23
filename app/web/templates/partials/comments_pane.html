@@ -1,0 +1,13 @@
+<section class="pane pane-comments" id="comments-pane" aria-label="Comments">
+  <h2 class="pane-title">Comments{% if item %}<span class="pane-context">{{ item.name }}</span>{% endif %}</h2>
+  {% for group in groups %}
+  <div class="group">
+    <h3 class="group-title">{{ group.label }} <span class="count">{{ group.comments | length }}</span></h3>
+    {% for comment in group.comments %}
+    {% include "partials/comment_card.html" %}
+    {% else %}
+    <p class="empty">None</p>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</section>

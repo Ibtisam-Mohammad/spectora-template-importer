@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ template.name }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='froala-shim.css') }}">{% endblock %}
+{% block body_class %}editor{% endblock %}
+{% block topbar %}
+<span class="template-name">{{ template.name }}</span>
+<nav class="topbar-actions">
+  <a href="/">Library</a>
+</nav>
+{% endblock %}
+{% block main %}
+<div class="panes">
+  {% include "partials/sections_pane.html" %}
+  {% include "partials/items_pane.html" %}
+  {% include "partials/comments_pane.html" %}
+</div>
+{% endblock %}

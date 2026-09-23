@@ -16,7 +16,7 @@ from app.db.migrations import apply_migrations
 from app.db.pool import connect
 from app.db.templates import list_templates
 from app.services.importer import VerificationFailed, import_file
-from app.services.photos import PhotoCopier, SupabaseStorage
+from app.services.photos import configured_copier, configured_storage
 from app.spectora.analysis import Analysis, analyse
 from app.spectora.model import Refusal
 
@@ -64,18 +64,9 @@ def _database_url(settings: Settings) -> str:
     return settings.database_url
 
 
-def _storage(settings: Settings) -> SupabaseStorage | None:
-    if settings.supabase_url is None or settings.supabase_secret_key is None:
-        return None
-    return SupabaseStorage.connect(
-        settings.supabase_url, settings.supabase_secret_key, settings.photo_bucket
-    )
-
-
 def _import(data: bytes, filename: str) -> int:
     settings = get_settings()
-    storage = _storage(settings)
-    photos = PhotoCopier.connect(storage) if storage else None
+    photos = configured_copier(settings)
     with connect(_database_url(settings)) as conn:
         try:
             outcome = import_file(conn, data, filename, photos)
@@ -85,6 +76,9 @@ def _import(data: bytes, filename: str) -> int:
         except VerificationFailed as failed:
             print(f"rolled back: verification failed: {failed}")
             return 1
+        finally:
+            if photos:
+                photos.close()
     _print_analysis(Path(filename), outcome.analysis)
     _print_issues(outcome.issues)
     print(f"stored    template {outcome.template_id}, import run {outcome.run_id}")
@@ -108,7 +102,7 @@ def _migrate_command(_: argparse.Namespace) -> int:
     with connect(_database_url(settings)) as conn:
         applied = apply_migrations(conn)
     print("applied   " + (", ".join(applied) if applied else "nothing; already up to date"))
-    storage = _storage(settings)
+    storage = configured_storage(settings)
     if storage is None:
         print("photos    storage not configured; set SUPABASE_URL and SUPABASE_SECRET_KEY")
     else:

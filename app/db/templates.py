@@ -9,6 +9,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.db.records import (
+    NodeIssue,
     StoredComment,
     StoredItem,
     StoredPhoto,
@@ -151,3 +152,30 @@ def list_templates(conn: psycopg.Connection) -> list[TemplateSummary]:
             """
         ).fetchall()
     return [TemplateSummary(**row) for row in rows]
+
+
+def issues_by_node(conn: psycopg.Connection, template_id: UUID) -> dict[UUID, list[NodeIssue]]:
+    """Import issues keyed by every node they concern: an issue about a comment is listed under
+    the comment, its item and its section."""
+    rows = conn.execute(
+        "select i.section_id, i.item_id, i.comment_id, i.kind, i.severity, i.detail,"
+        " i.row_number, i.column_letter"
+        " from import_issue i join section s on s.id = i.section_id"
+        " where s.template_id = %s order by i.import_run_id, i.position",
+        [template_id],
+    ).fetchall()
+    by_node: dict[UUID, list[NodeIssue]] = {}
+    for section_id, item_id, comment_id, *fields in rows:
+        issue = NodeIssue(*fields)
+        for node_id in (section_id, item_id, comment_id):
+            if node_id is not None:
+                by_node.setdefault(node_id, []).append(issue)
+    return by_node
+
+
+def latest_run_id(conn: psycopg.Connection, template_id: UUID) -> UUID | None:
+    row = conn.execute(
+        "select id from import_run where template_id = %s order by started_at desc limit 1",
+        [template_id],
+    ).fetchone()
+    return row[0] if row else None

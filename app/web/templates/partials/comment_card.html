@@ -1,0 +1,77 @@
+{% set notes = issues.get(comment.id, []) %}
+<details class="comment" id="comment-{{ comment.id }}">
+  <summary>
+    <span class="answer">{{ comment.answer_type | answer_label }}</span>
+    <span class="comment-name">{{ comment.name or "(no name)" }}</span>
+    {% if comment.comment_type == "defect" and comment.category %}
+    <span class="chip severity-{{ comment.category }}">{{ comment.category | category_label }}</span>
+    {% endif %}
+    {% if notes %}<span class="badge badge-note">{{ notes | length }} import note{{ "s" if notes | length > 1 }}</span>{% endif %}
+    {% if comment.body_edited_at %}<span class="badge">Edited</span>{% endif %}
+  </summary>
+  <div class="comment-detail">
+    {% if comment.body_html %}
+    <div class="comment-body" hx-disable>{{ comment.body_html | comment_html }}</div>
+    {% else %}
+    <p class="empty">No comment text.</p>
+    {% endif %}
+
+    <dl class="facts">
+      <dt>Answer format</dt>
+      <dd>{{ comment.answer_type | answer_label }}{% if comment.answer_type and comment.answer_type | answer_label == comment.answer_type %} <span class="muted">(not a format Spectora documents)</span>{% endif %}</dd>
+      {% if comment.comment_type not in ("info", "limit", "defect") %}
+      <dt>Comment type</dt><dd>{{ comment.comment_type or "(blank)" }}</dd>
+      {% endif %}
+      {% if comment.choices %}
+      <dt>Choices</dt>
+      <dd class="chips">{% for choice in comment.choices %}<span class="chip">{{ choice }}</span>{% endfor %}</dd>
+      {% endif %}
+      {% if comment.unit_options %}
+      <dt>Units</dt>
+      <dd class="chips">{% for unit in comment.unit_options %}<span class="chip">{{ unit }}</span>{% endfor %}</dd>
+      {% endif %}
+      {% if comment.default_value or comment.default_value_2 %}
+      <dt>Default</dt>
+      <dd>{{ comment.default_value }}{% if comment.default_value_2 %} to {{ comment.default_value_2 }}{% endif %} {{ comment.default_unit_type }}</dd>
+      {% elif comment.default_unit_type %}
+      <dt>Default unit</dt><dd>{{ comment.default_unit_type }}</dd>
+      {% endif %}
+      {% if comment.default_location %}
+      <dt>Location</dt><dd>{{ comment.default_location }}</dd>
+      {% endif %}
+      {% if comment.comment_type == "defect" or comment.category %}
+      <dt>Severity</dt><dd>{{ comment.category | category_label if comment.category else "Not set" }}</dd>
+      {% endif %}
+      {% if comment.recommendation %}
+      <dt>Recommendation</dt><dd>{{ comment.recommendation }}</dd>
+      {% endif %}
+      {% if comment.estimate_min or comment.estimate_max %}
+      <dt>Estimate</dt><dd>{{ comment.estimate_min or "?" }} to {{ comment.estimate_max or "?" }}</dd>
+      {% endif %}
+      {% for label, value in [("Locked", comment.locked), ("Simple format", comment.simple_format), ("Disable photos", comment.disable_photos), ("Uses", comment.uses)] if value %}
+      <dt>{{ label }}</dt><dd>{{ value }}</dd>
+      {% endfor %}
+    </dl>
+
+    {% if comment.photos %}
+    <div class="photos">
+      {% for photo in comment.photos %}
+      <figure>
+        {% if photo.source_url %}<img src="{{ photo_src(photo) }}" alt="{{ photo.caption }}" loading="lazy">{% endif %}
+        <figcaption>{{ photo.caption or "No caption" }}{% if not photo.stored_path %} <span class="muted">(not copied)</span>{% endif %}</figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if notes %}
+    <ul class="notes">
+      {% for note in notes %}<li class="note-{{ note.severity }}">{{ note.detail }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if comment.source_row_number %}
+    <p class="provenance">Imported from row {{ comment.source_row_number }}{% if comment.source_last_modified %}, last changed in Spectora {{ comment.source_last_modified }}{% endif %}.</p>
+    {% endif %}
+  </div>
+</details>

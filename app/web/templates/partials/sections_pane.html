@@ -1,0 +1,22 @@
+<nav class="pane" id="sections-pane" aria-label="Sections">
+  <h2 class="pane-title">Sections</h2>
+  {% if template.sections %}
+  <ul class="nodes">
+    {% for node in template.sections %}
+    {% set url = "/t/" ~ template.id ~ "?section=" ~ node.id %}
+    <li>
+      <a href="{{ url }}" data-select
+         hx-get="{{ url }}" hx-target="#items-pane" hx-select="#items-pane"
+         hx-select-oob="#comments-pane" hx-swap="outerHTML" hx-push-url="true"
+         {% if section and node.id == section.id %}aria-current="page"{% endif %}>
+        <span class="node-name">{{ node.name }}</span>
+        {% if issues.get(node.id) %}<span class="dot" title="{{ issues[node.id] | length }} import notes"></span>{% endif %}
+        <span class="count">{{ node.items | length }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty pane-empty">This template has no sections.</p>
+  {% endif %}
+</nav>

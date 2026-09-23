@@ -3,8 +3,59 @@
 {% block main %}
 <section class="page">
   <h1>Templates</h1>
-  {% if not templates %}
-  <p class="empty">No templates yet.</p>
+
+  <form class="card upload" method="post" action="/import" enctype="multipart/form-data"
+        data-max-bytes="{{ max_upload_bytes }}">
+    <h2>Import from Spectora</h2>
+    <p>
+      In Spectora, open <strong>Templates</strong>, then <strong>My Templates</strong>, choose the
+      template, and pick <strong>Export to spreadsheet</strong> from its menu, then
+      <strong>Export HTML Text</strong>. Upload the <code>.xls</code> file it downloads, up to
+      {{ max_upload_mb }} MB.
+    </p>
+    <p class="hint">Use HTML Text, not Plain Text: the Plain Text export has already lost the
+      links and formatting.</p>
+    <div class="upload-row">
+      <input type="file" name="file" accept=".xls,.xlsx" required>
+      <button type="submit" class="button">Import</button>
+    </div>
+    <p class="field-error" data-too-large hidden>
+      This file is larger than {{ max_upload_mb }} MB, the most this app accepts in one upload.
+    </p>
+  </form>
+
+  {% if problem %}
+  <div class="problem" role="alert">
+    <strong>{{ problem.title }}</strong>
+    {% if problem.details %}
+    <ul>{% for detail in problem.details %}<li>{{ detail }}</li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if library is none %}
+  <p class="empty">The database is not configured, so there is no library to show.</p>
+  {% elif not library %}
+  <p class="empty">No templates yet. Import a Spectora export to start.</p>
+  {% else %}
+  <table class="library">
+    <thead>
+      <tr><th>Name</th><th>Origin</th><th class="num">Sections</th><th class="num">Items</th>
+        <th class="num">Comments</th><th>Last changed</th></tr>
+    </thead>
+    <tbody>
+      {% for entry in library %}
+      <tr>
+        <td><a href="/t/{{ entry.id }}">{{ entry.name }}</a></td>
+        <td>{{ "Imported" if entry.origin == "import" else "Copy" }}</td>
+        <td class="num">{{ entry.sections }}</td>
+        <td class="num">{{ entry.items }}</td>
+        <td class="num">{{ entry.comments }}</td>
+        <td>{{ entry.updated_at | when }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   {% endif %}
 </section>
 {% endblock %}
