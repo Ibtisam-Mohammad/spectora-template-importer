@@ -15,6 +15,9 @@
 <nav class="topbar-actions">
   {% if run_id %}<a href="/runs/{{ run_id }}">Import report</a>{% endif %}
   <a href="/">Library</a>
+  <form method="post" action="/t/{{ template.id }}/duplicate">
+    <button type="submit" class="topbar-button">Duplicate</button>
+  </form>
   <form method="post" action="/t/{{ template.id }}/delete"
         onsubmit="return confirm('Delete this template? This cannot be undone.')">
     <button type="submit" class="topbar-button">Delete</button>

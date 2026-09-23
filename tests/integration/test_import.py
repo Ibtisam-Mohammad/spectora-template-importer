@@ -1,6 +1,5 @@
 import hashlib
 
-import httpx
 import pytest
 
 from app.db import imports
@@ -8,11 +7,10 @@ from app.db.migrations import apply_migrations
 from app.db.templates import list_templates, read_tree
 from app.services import importer
 from app.services.importer import VerificationFailed, import_file
-from app.services.photos import PhotoCopier, SupabaseStorage
 from app.spectora.analysis import PARSER_VERSION
 from app.spectora.model import IssueKind, Refusal, Scope
 from tests.helpers import analysed
-from tests.integration.conftest import table_counts
+from tests.integration.conftest import fake_photo_copier, table_counts
 from tests.paths import ANALYSED, PRIMARY, PROBE_DUPLICATE, PROBE_HTML, PROBE_PLAIN, RICH_COMMENT
 from tests.xlsx_builder import build_xlsx
 
@@ -205,22 +203,9 @@ def test_markup_the_renderer_drops_is_reported_on_its_comment(conn):
 # ---------------------------------------------------------------- photos and the library
 
 
-class _Cdn:
-    def __call__(self, request: httpx.Request) -> httpx.Response:
-        body = str(request.url).encode()
-        return httpx.Response(200, content=body, headers={"content-type": "image/jpeg"})
-
-
 @pytest.mark.rule("PH2")
 def test_copied_photos_are_stored_with_their_original_url(conn):
-    storage = httpx.Client(
-        transport=httpx.MockTransport(lambda request: httpx.Response(200)),
-        base_url="https://x.supabase.co",
-    )
-    photos = PhotoCopier(
-        httpx.Client(transport=httpx.MockTransport(_Cdn())), SupabaseStorage(storage, "b")
-    )
-    outcome = import_file(conn, PROBE_HTML.read_bytes(), PROBE_HTML.name, photos)
+    outcome = import_file(conn, PROBE_HTML.read_bytes(), PROBE_HTML.name, fake_photo_copier())
     tree = read_tree(conn, outcome.template_id)
     stored = [photo for comment in tree.comments() for photo in comment.photos]
     assert len(stored) == 4

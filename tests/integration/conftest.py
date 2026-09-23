@@ -2,11 +2,13 @@
 
 import os
 
+import httpx
 import psycopg
 import pytest
 
 from app.db.migrations import apply_migrations
 from app.db.pool import connect
+from app.services.photos import PhotoCopier, SupabaseStorage
 
 # Every table the migrations create, children first.
 APP_TABLES = (
@@ -53,3 +55,19 @@ def table_counts(conn: psycopg.Connection) -> dict[str, int]:
         for table in APP_TABLES
         if table != "schema_migrations"
     }
+
+
+def fake_photo_copier() -> PhotoCopier:
+    """A copier whose CDN answers every photo with an image made of its own URL, and whose
+    storage accepts everything. No network is used."""
+
+    def cdn(request: httpx.Request) -> httpx.Response:
+        image = str(request.url).encode()
+        return httpx.Response(200, content=image, headers={"content-type": "image/jpeg"})
+
+    fetcher = httpx.Client(transport=httpx.MockTransport(cdn))
+    storage = httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200)),
+        base_url="https://storage.test",
+    )
+    return PhotoCopier(fetcher, SupabaseStorage(storage, "photos"))

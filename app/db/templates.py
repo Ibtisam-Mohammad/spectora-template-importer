@@ -160,8 +160,13 @@ def list_templates(conn: psycopg.Connection) -> list[TemplateSummary]:
                    (select count(*) from comment c join item i on i.id = c.item_id
                      join section s on s.id = i.section_id
                      where s.template_id = t.id) as comments,
-                   (select r.id from import_run r where r.template_id = t.id
-                     order by r.started_at desc limit 1) as latest_run_id
+                   coalesce(
+                     (select r.id from import_run r where r.template_id = t.id
+                       order by r.started_at desc limit 1),
+                     (select c.import_run_id from comment c join item i on i.id = c.item_id
+                       join section s on s.id = i.section_id
+                       where s.template_id = t.id and c.import_run_id is not null limit 1)
+                   ) as latest_run_id
             from template t
             order by t.updated_at desc, t.name
             """
@@ -189,8 +194,13 @@ def issues_by_node(conn: psycopg.Connection, template_id: UUID) -> dict[UUID, li
 
 
 def latest_run_id(conn: psycopg.Connection, template_id: UUID) -> UUID | None:
+    """The template's latest import or, for a copy, the import its comments came from."""
     row = conn.execute(
-        "select id from import_run where template_id = %s order by started_at desc limit 1",
-        [template_id],
+        "select coalesce("
+        " (select id from import_run where template_id = %(t)s order by started_at desc limit 1),"
+        " (select c.import_run_id from comment c join item i on i.id = c.item_id"
+        "  join section s on s.id = i.section_id"
+        "  where s.template_id = %(t)s and c.import_run_id is not null limit 1))",
+        {"t": template_id},
     ).fetchone()
     return row[0] if row else None

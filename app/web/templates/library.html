@@ -52,7 +52,12 @@
         <td class="num">{{ entry.items }}</td>
         <td class="num">{{ entry.comments }}</td>
         <td>{{ entry.updated_at | when }}</td>
-        <td>{% if entry.latest_run_id %}<a href="/runs/{{ entry.latest_run_id }}">Import report</a>{% endif %}</td>
+        <td class="row-actions">
+          {% if entry.latest_run_id %}<a href="/runs/{{ entry.latest_run_id }}">Import report</a>{% endif %}
+          <form method="post" action="/t/{{ entry.id }}/duplicate">
+            <button type="submit" class="link-button">Duplicate</button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

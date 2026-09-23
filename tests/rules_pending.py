@@ -6,7 +6,6 @@ here, and forbids a rule from being both. The build is complete when this set is
 
 PENDING: frozenset[str] = frozenset(
     {
-        "E4",
         "Z2",
     }
 )  # fmt: skip

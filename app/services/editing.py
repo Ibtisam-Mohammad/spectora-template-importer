@@ -14,7 +14,7 @@ from uuid import UUID
 
 import psycopg
 
-from app.db import editing
+from app.db import copying, editing
 from app.db.editing import EDITABLE_COMMENT_COLUMNS, Direction, NodeKind, NodePath
 from app.db.imports import COMMENT_SOURCE_FIELDS
 from app.db.records import StoredComment
@@ -185,6 +185,15 @@ def delete_node(conn: psycopg.Connection, kind: NodeKind, node_id: UUID) -> Node
             editing.delete_node(conn, kind, node_id)
             editing.touch_template(conn, path.template_id)
     return path
+
+
+def duplicate_template(conn: psycopg.Connection, template_id: UUID) -> UUID | None:
+    """A deep copy, all in one transaction. Editing either one never changes the other."""
+    with conn.transaction():
+        name = copying.template_name(conn, template_id)
+        if name is None:
+            return None
+        return copying.copy_template(conn, template_id, f"{name} (copy)")
 
 
 def delete_template(conn: psycopg.Connection, template_id: UUID) -> None:

@@ -55,6 +55,12 @@ def rename_template(request: Request, template_id: UUID, name: Name, conn: Conne
     return _show(request, conn, NodePath(template_id))
 
 
+@router.post("/t/{template_id}/duplicate")
+def duplicate_template(template_id: UUID, conn: Connection):
+    copy_id = _found(editing.duplicate_template(conn, template_id))
+    return RedirectResponse(f"/t/{copy_id}", status_code=303)
+
+
 @router.post("/t/{template_id}/delete")
 def delete_template(template_id: UUID, conn: Connection):
     editing.delete_template(conn, template_id)
