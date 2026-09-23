@@ -12,10 +12,6 @@ class DatabaseNotConfigured(Exception):
     pass
 
 
-def database_configured() -> bool:
-    return get_settings().database_url is not None
-
-
 def db() -> Iterator[psycopg.Connection]:
     """FastAPI dependency: one pooled connection for the request."""
     url = get_settings().database_url

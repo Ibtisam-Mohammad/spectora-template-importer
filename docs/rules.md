@@ -81,7 +81,7 @@ Each rule gives its evidence and the module that implements it.
 - **O4** Duplicate Order values within one group raise `AMBIGUOUS_ORDER` at info level.
   Evidence: Room-by-Room has duplicates in 120 of 220 groups. Module: `app/spectora/parse.py`.
 - **O5** After import, position belongs to the app. Reordering edits it, and nothing re-derives it from the file.
-  Evidence: `docs/design/schema.md`, Layer 2. Module: `app/db/templates.py`.
+  Evidence: `docs/design/schema.md`, Layer 2. Module: `app/db/editing.py`.
 
 ## Values
 
@@ -153,13 +153,13 @@ Each rule gives its evidence and the module that implements it.
 ## Editing and copying
 
 - **E1** The template, sections and items can be renamed; every comment field can be edited; sections, items and comments can be added, deleted and reordered. Every change persists and updates the template's modified time.
-  Evidence: the brief, "Edit", and the agreed editor scope. Module: `app/services/editing.py`, `app/db/templates.py`.
+  Evidence: the brief, "Edit", and the agreed editor scope. Module: `app/services/editing.py`, `app/db/editing.py`.
 - **E2** A comment body is saved only when it differs from what the editor loaded. A request without a body field leaves the body unchanged.
   Evidence: TinyMCE rewrites styles and wrapping on load. Module: `app/web/static/editor.js`, `app/services/editing.py`.
 - **E3** Any comment can be reverted to the values it was imported with, read from its source row.
   Evidence: the source row keeps the original. Module: `app/services/editing.py`.
 - **E4** Duplicating a template is a deep copy in one transaction, with new ids at every level and a link to the original. Editing either one never changes the other.
-  Evidence: the brief, "Copy". Module: `app/db/templates.py`.
+  Evidence: the brief, "Copy". Module: `app/db/copying.py`.
 - **E5** Edits run the same value checks as import and show their warnings. Nothing is blocked.
   Evidence: `docs/design/schema.md`, Layer 4, "validate and report, never reject". Module: `app/services/editing.py`.
 - **E6** A comment whose body was edited is marked as edited.

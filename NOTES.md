@@ -2,7 +2,7 @@
 
 Notes for the Hive Inspect template-importer assignment.
 
-> Status: in progress. Sections marked TODO are not yet written and must not ship as-is.
+> Two sections are marked TODO: the Hive trial and the time spent. Both need the author's own account.
 
 ---
 
@@ -95,48 +95,251 @@ Explored Binsr alongside Hive. Observations are from the trial, not from documen
 
 ### Influence on this build
 
-TODO: connect the above to specific design decisions once the app exists.
+- **Three panes, like Spectora and Hive.** Sections, items and comments side by side is the
+  surface both Spectora and Hive use, and the one I rated Hive ahead on. An inspector checking
+  a migrated template needs to see where a comment sits while reading it.
+- **Trust before automation.** Binsr's choice between manual and AI import says the user wants
+  to see and control what the importer did. This importer takes the other half of that idea:
+  no model, a deterministic parser, and a report that shows its working.
+- **Name the export path.** Hive's docs say "export in HTML format" and never name the menu. The
+  upload form here names it: Export to spreadsheet, then Export HTML Text. If the Plain Text
+  export arrives anyway, it is recognised and flagged.
+
+---
+
+## The improvement: an import report you can trust
+
+**The customer problem.** This customer has four years of tuned comments and will not retype
+them. What stops them switching is doubt: did the import get everything, and would they notice
+if it had not? A green "import complete" message does not answer that, and checking 392
+comments, or 1,248 in a mature library, by eye is not realistic.
+
+**What it is.** Every upload lands on a report, which stays linked from the library and the
+editor:
+
+- **Verification.** Inside the import transaction, every cell of every source row and every
+  field of the tree, read back through the editor's own query, is compared with the parse. A
+  mismatch rolls the whole import back.
+- **Re-derivation.** When the report opens, the stored rows are parsed again, without the
+  upload. The result is compared with what was imported.
+- **Structure side by side.** The file against what was imported, down to the comment types.
+- **Three coverage numbers.** Cells captured, modelled, and varying data modelled, with the
+  ledger for all 42 columns behind them.
+- **Import notes.** Grouped by kind, each naming its row and column and linking to the node in
+  the editor. The same notes badge the sections, items and comments they concern.
+- **Markup.** An inventory of the HTML in the comments, and what the display policy holds back.
+- **Two separate lists.** What is missing from Spectora's export, and what this importer does
+  not support.
+
+The editor work beyond the baseline is covered below, as usability, not as the improvement.
 
 ---
 
 ## Supported input
 
-TODO. Must state: exact Spectora export variant accepted, file extension, which sheet and
-columns are read, and what a valid file looks like.
+- **Accepted:** Spectora's **Export to spreadsheet, then Export HTML Text**. The file is named
+  `.xls` but is an OOXML workbook. It is recognised by its content, not its extension.
+- **Read:** the first worksheet, header on row 1. Columns are matched by exact header text
+  against the 42 Spectora writes, not by position. One row is one comment; sections and items
+  are contiguous blocks of rows.
+- **Accepted with a warning:** Spectora's Plain Text export. It is detected from the file and
+  imported, and the report says links and formatting were lost before the file was downloaded.
+- **Refused, nothing stored:** anything that is not a spreadsheet, and spreadsheets without
+  Section Name and Item Name columns. The refusal lists the header differences.
+- **Tolerated and reported:** unknown or missing columns, extra sheets, blank rows, values
+  Spectora does not document, and unusual combinations. Nothing is refused for those, and
+  nothing is dropped.
+- **Size:** up to 4 MB per upload. The largest export seen is 183 KB, with 1,248 comments.
+
+The rules behind all of this are in `docs/rules.md`. The measurements they rest on are in
+`docs/format/`.
+
+---
+
+## Formatting, links and rich content
+
+**Stored exactly.** Comment Text is stored byte for byte as it comes out of the file. It is
+never decoded, trimmed or cleaned at import, so no display decision can damage it, and every
+one can be changed later without re-importing.
+
+**Displayed safely.** HTML from an uploaded file is untrusted, so it is sanitised when it is
+displayed, with nh3. The policy allows everything Spectora's editor (Froala) produces:
+
+- sized and coloured text, bold, italic and underline;
+- lists and links;
+- tables with merged cells;
+- images, and YouTube or Vimeo embeds;
+- Froala's table classes, styled by a small shim stylesheet.
+
+It removes only what can run code or escape the comment's box. That means scripts, event
+handlers, forms, frames from other hosts, `javascript:` links, and CSS such as `position`.
+Every link opens with `rel="noopener noreferrer"`.
+
+A golden test holds the policy to the HTML of a comment written with every control in
+Spectora's editor.
+
+**Limits.**
+
+- Markup the policy holds back is kept but not shown. The report lists it per comment, with
+  counts.
+- Editing a comment's text in TinyMCE rewrites its HTML. So the text is sent only if it
+  changed, an edited comment is marked, and Revert brings back the original from the source
+  row.
+- Images inside comment text are shown from where they are hosted. Spectora-hosted ones are
+  flagged, because they stop working when the account closes; they are not copied.
+- Default photos are copied into Supabase Storage at import. Only https links on Spectora's
+  CDN are fetched, with no redirects and with size and time caps. A failure is reported and
+  the original link is kept.
 
 ---
 
 ## Known limitations
 
-TODO. Must distinguish clearly between:
+**Missing from Spectora's export.** No importer can bring these in:
 
-- information that is **missing from the Spectora export itself**, and
-- information the export contains that **this importer does not yet support**.
+- sections and items with no comments;
+- section and item settings: icons, Standards of Practice, reminders, optional and
+  information-only flags, and the overview grid;
+- the template's name and settings (the name here comes from the file name);
+- an order column for sections and items. Both follow file order. Section order matched
+  Spectora's editor in every export examined, and item order in two of three, so the report
+  calls item order best-effort;
+- the photos themselves, which are links to Spectora's servers;
+- the account's Location Tags and Recommendation lists. Defaults arrive as text;
+- where one of two neighbouring same-named sections ends. Spectora writes them as one, and
+  the importer flags the likely case;
+- name text that looks like an HTML tag, such as `<x>`, which Spectora exports with an added
+  closing tag.
 
-Also cover formatting, links and other rich content in the export, and where the limits are.
+**Not supported by this importer:**
+
+- exports from other inspection software, which are refused;
+- restoring what the Plain Text export removed;
+- sheets after the first;
+- displaying the markup listed under "Formatting" above;
+- copying images inside comment text;
+- splitting a section Spectora merged, merging into an existing template, and exporting back
+  to Spectora;
+- editing photos: default photos are shown, not added, removed or reordered;
+- moving an item to another section;
+- import notes on copies. They stay with the imported template; a copy links to the report.
+
+**Of the app, not the import:**
+
+- **No accounts and no CSRF protection.** Anyone with the URL can edit or delete. That is
+  acceptable for a review demo, and the first thing to add for real use.
+- **Last write wins.** There is no locking or edit history beyond Revert.
 
 ---
 
 ## What I cut, and why
 
-TODO.
+- **A model in the import path.** The input is a fixed 42-column format that can be parsed
+  exactly, and verified exactly. A model could invent sections or drop comments, and the
+  report would then be checking a guess. A model would be worth its risk for other vendors'
+  exports, which have no fixed format; those are out of scope.
+- **Other vendors' formats.** The brief scopes this to Spectora. They are refused cleanly,
+  with the reason, rather than half-supported.
+- **Login.** It would put a step between the reviewer and the app. It is the first thing to
+  add.
+- **Drag-and-drop reordering.** Move up and move down cover the need with far less code.
+- **Photo editing, moving items between sections, and undo history.** Revert-to-imported
+  covers the most important undo, going back to what Spectora had.
+- **Section and item settings.** The export does not carry them, so there would be nothing to
+  import into them.
 
 ---
 
 ## How I checked my work
 
-TODO. Must cover: preservation of text, hierarchy and ordering; edits persisting across a
-restart; a copy being edited without affecting the original; behaviour on at least one
-failure case; and behaviour on a second, different export in the same format.
+**Preservation.**
+
+- `tools/verify_claims.py` re-asserts 75 measured facts about the probe export. The same
+  facts are unit tests.
+- Every import is verified before it commits: every source row cell for cell, and the tree
+  read back through the editor's query field for field. Five tests tamper with a different
+  stored table mid-import and confirm the import rolls back and leaves nothing.
+- Every comment of every fixture re-parses on its own from its stored source row, exactly.
+  That is what Revert relies on.
+- The committed export imports as 13 sections, 69 items and 392 comments, split 302 / 78 / 12,
+  and the report shows those numbers on both sides. 100% of filled cells are captured and
+  modelled.
+
+**A different export.** Four stock templates were sealed, unopened, before the parser
+existed. Their hashes were recorded at the time. They were run once at the end:
+
+- All four imported and verified, up to 1,248 comments.
+- The run found two general gaps: Spectora-hosted images inside comment text, and `float`.
+  Both were fixed as general rules, in their own commit.
+- One of the four was not fully blind. The results and that caveat are in
+  `fixtures/holdout/README.md`.
+
+A test fails if any string in the format core matches a name or value from the fixtures, so
+the parser cannot quietly learn one template.
+
+**Saved edits.** Integration tests make every kind of edit through the service and the web
+routes, then read it back on a new connection. They also check two things:
+
+- saving an untouched form leaves the comment byte-identical;
+- edits run the import's checks without being blocked.
+
+`tools/browser_check.py` drives Edge through the one rule that lives in JavaScript: an
+untouched TinyMCE save sends no body, an edit is stored and marked, and Revert restores the
+original exactly.
+
+**Independent copies.**
+
+- Edits to a copy never reach the original, and edits to the original never reach the copy.
+  A copy outlives its deleted original and can still be reverted.
+- A drift test gives every column a value, copies, and compares every copied row as JSON. I
+  checked it by dropping a column from the copy list: the test failed.
+
+**Failure cases.**
+
+- A non-spreadsheet is refused. A spreadsheet with other headers is refused with the
+  differences listed. In both cases nothing is stored.
+- The Plain Text export is imported with a warning.
+- Merged same-named sections are flagged.
+- A database error mid-import leaves nothing behind.
+- An upload over 4 MB gets a clear message.
+
+**Totals.** 286 tests pass with a database and the holdout. 193 run without a database. All 59
+rules in `docs/rules.md` are covered; `docs/rules-status.md` is the last full run.
+
+---
+
+## How I used AI tools
+
+Built with Claude Code as a pair. I directed the analysis, the probes and every decision; it
+wrote most of the code and documents, and I reviewed them.
+
+What kept the output honest:
+
+- **A rules checklist tied to tests.** `docs/rules.md` lists every rule; a meta-test fails on a
+  rule with no test.
+- **Rule zero, enforced by a test.** Know the format, never the template.
+- **Probe exports.** I made exports in Spectora specifically to settle open questions,
+  instead of assuming.
+- **The sealed holdout.** Four templates the tools never saw until the parser was finished.
+
+The analysis scripts in `tools/` are part of the repo for that reason.
 
 ---
 
 ## Time spent
 
-TODO.
+TODO: approximate hours for exploration, analysis, building, deployment and the walkthrough.
 
 ---
 
 ## Credits
 
-TODO. Any starter, library or open-source project this builds on, and what is my own work.
+**Libraries used, not modified:**
+
+- FastAPI and Starlette, Jinja2, htmx, and TinyMCE (GPL build, from jsDelivr);
+- psycopg and psycopg-pool, defusedxml, nh3 (the Rust ammonia sanitiser), and httpx;
+- pytest, ruff, uv, and Playwright for the browser check.
+
+No starter template was used. The format analysis, the probes, the schema, the parser, the
+importer and its verification, the report, the editor, the copy and the tests are this
+project's own work.
