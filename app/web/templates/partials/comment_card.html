@@ -74,7 +74,7 @@
           <input name="default_value_2" value="{{ comment.default_value_2 }}">
         </label>
         <label data-formats="number range"{% if comment.default_unit_type %} data-keep{% endif %}><span class="label-text">Default unit {{ tip(help.default_unit_type) }}</span>
-          <input name="default_unit_type" value="{{ comment.default_unit_type }}">
+          <input name="default_unit_type" value="{{ comment.default_unit_type }}" list="suggest-default_unit_type" autocomplete="off">
         </label>
         <label data-types="defect"{% if comment.category %} data-keep{% endif %}><span class="label-text">Severity {{ tip(help.category) }}</span>
           <select name="category">
@@ -88,10 +88,10 @@
           </select>
         </label>
         <label data-types="defect"{% if comment.recommendation %} data-keep{% endif %}><span class="label-text">Recommendation {{ tip(help.recommendation) }}</span>
-          <input name="recommendation" value="{{ comment.recommendation }}">
+          <input name="recommendation" value="{{ comment.recommendation }}" list="suggest-recommendation" autocomplete="off">
         </label>
         <label class="wide"><span class="label-text">Location {{ tip(help.default_location) }}</span>
-          <input name="default_location" value="{{ comment.default_location }}">
+          <input name="default_location" value="{{ comment.default_location }}" list="suggest-default_location" autocomplete="off">
         </label>
       </div>
 

@@ -1,6 +1,9 @@
 {% from "partials/help.html" import help, tip, pane_notes %}
 <section class="pane pane-comments" id="comments-pane" aria-label="Comments">
   <h2 class="pane-title">Comments {{ tip(help.comments) }}{% if item %}<span class="pane-context">{{ item.name }}</span>{% endif %}</h2>
+  {% for field, values in suggestions.items() %}
+  <datalist id="suggest-{{ field }}">{% for value in values %}<option value="{{ value }}"></option>{% endfor %}</datalist>
+  {% endfor %}
   {% if item %}
   {{ pane_notes(issues.get(item.id, []) | selectattr("scope", "equalto", "item") | list, run_id) }}
   {% endif %}

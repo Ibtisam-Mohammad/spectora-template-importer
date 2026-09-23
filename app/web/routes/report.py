@@ -21,7 +21,7 @@ def report_page(
 ) -> Response:
     report = build_report(conn, run_id)
     if report is None:
-        raise HTTPException(404, "There is no import report at this address.")
+        raise HTTPException(404, "There are no import results at this address.")
     return templates.TemplateResponse(
         request, "report.html", {"report": report, "node_url": _node_url(report.run.template_id)}
     )

@@ -114,14 +114,16 @@
 
   // Which fields a form shows follows Spectora's editor: the answer format decides the answer
   // fields, and severity and recommendation belong to deficiencies. A field that holds a value
-  // is always shown, and an answer format Spectora does not document shows every field.
+  // is always shown. No answer format shows no answer fields; a format Spectora does not
+  // document shows them all, since it is unknown which apply.
   function showFields(form) {
     const format = form.querySelector("[data-answer-format]");
     const type = form.querySelector("[data-comment-type]");
     const known = (format.dataset.known || "").split(" ");
+    const undocumented = format.value !== "" && !known.includes(format.value);
     for (const field of form.querySelectorAll("[data-formats]")) {
       const applies = field.dataset.formats.split(" ").includes(format.value);
-      field.hidden = !(field.hasAttribute("data-keep") || applies || !known.includes(format.value));
+      field.hidden = !(field.hasAttribute("data-keep") || applies || undocumented);
     }
     for (const field of form.querySelectorAll("[data-types]")) {
       const applies = field.dataset.types.split(" ").includes(type.value);

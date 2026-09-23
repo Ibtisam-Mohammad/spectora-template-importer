@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% set run = report.run %}
-{% block title %}Import report: {{ run.source_filename }}{% endblock %}
+{% block title %}Import results: {{ run.source_filename }}{% endblock %}
 {% block topbar %}
-<span class="template-name">Import report</span>
+<span class="template-name">Import results</span>
 <nav class="topbar-actions">
   {% if run.template_id %}<a href="/t/{{ run.template_id }}">Open template</a>{% endif %}
   <a href="/">Library</a>

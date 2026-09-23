@@ -109,6 +109,9 @@ Explored Binsr alongside Hive. Observations are from the trial, not from documen
 
 ## The improvement: an import report you can trust
 
+The app calls it **Import results**, because in this product "report" means the inspection
+report a homeowner receives.
+
 **The customer problem.** This customer has four years of tuned comments and will not retype
 them. What stops them switching is doubt: did the import get everything, and would they notice
 if it had not? A green "import complete" message does not answer that, and checking 392
@@ -162,6 +165,9 @@ to Spectora to fix something the import could not settle.
 - **Guidance where it is needed.** A "?" on each heading and field explains it in plain words,
   including the ones Spectora's export leaves cryptic, such as the recommendation code `pro`.
   Import notes appear above the items or comments they concern, not only in the report.
+- **Suggestions from the template itself.** Recommendation, location and unit fields offer the
+  values this template already uses, and anything else can still be typed. Spectora keeps the
+  full lists in the account, not in the export, so a fixed list would be invented.
 
 It is a working surface, not the chosen improvement. It is kept to what migration needs: no
 AI writing help, no search, no bulk edit (see below).
@@ -238,7 +244,8 @@ Spectora's editor.
   Spectora's editor in every export examined, and item order in two of three, so the report
   calls item order best-effort;
 - the photos themselves, which are links to Spectora's servers;
-- the account's Location Tags and Recommendation lists. Defaults arrive as text;
+- the account's Location Tags and Recommendation lists. Defaults arrive as text, and the
+  editor suggests the values the template already uses;
 - where one of two neighbouring same-named sections ends. Spectora writes them as one, and
   the importer flags the likely case;
 - name text that looks like an HTML tag, such as `<x>`, which Spectora exports with an added

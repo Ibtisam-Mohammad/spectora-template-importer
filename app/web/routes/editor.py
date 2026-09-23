@@ -14,7 +14,7 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.db.records import StoredComment, StoredItem
+from app.db.records import StoredComment, StoredItem, StoredTemplate
 from app.db.templates import issues_by_node, latest_run_id, read_tree
 from app.services.editing import CommentResult
 from app.spectora.columns import (
@@ -88,6 +88,7 @@ def render_editor(
             "run_id": latest_run_id(conn, template_id),
             "open_comment": open_comment,
             "result": result,
+            "suggestions": suggestions(tree),
             "comment_types": COMMENT_TYPE_LABELS,
             "answer_types": ANSWER_TYPE_LABELS,
             "categories": CATEGORY_LABELS,
@@ -96,6 +97,22 @@ def render_editor(
     if request.method != "GET":
         response.headers["HX-Push-Url"] = url
     return response
+
+
+# Fields whose values Spectora picks from account-wide lists that the export leaves out. The
+# values this template already uses are offered as suggestions; anything can still be typed.
+SUGGESTED_FIELDS = ("recommendation", "default_location", "default_unit_type")
+
+
+def suggestions(tree: StoredTemplate) -> dict[str, list[str]]:
+    """Each suggested field's distinct values in this template, for the form's pick lists."""
+    return {
+        field: sorted(
+            {value for comment in tree.comments() if (value := getattr(comment, field)).strip()},
+            key=lambda value: value.strip().casefold(),
+        )
+        for field in SUGGESTED_FIELDS
+    }
 
 
 def _selected[Node](nodes: tuple[Node, ...], wanted: UUID | None) -> Node | None:

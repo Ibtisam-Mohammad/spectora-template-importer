@@ -13,7 +13,7 @@
          title="Click to rename the template">
 </form>
 <nav class="topbar-actions">
-  {% if run_id %}<a href="/runs/{{ run_id }}">Import report</a>{% endif %}
+  {% if run_id %}<a href="/runs/{{ run_id }}">{{ "Import results" if template.origin == "import" else "Original's import results" }}</a>{% endif %}
   <a href="/">Library</a>
   <form method="post" action="/t/{{ template.id }}/duplicate">
     <button type="submit" class="topbar-button">Duplicate</button>

@@ -9,7 +9,7 @@ from app import config
 from app.db.pool import close_pool
 from app.db.templates import read_tree
 from app.main import app
-from tests.paths import PRIMARY, PROBE_DUPLICATE, PROBE_PLAIN, RICH_COMMENT
+from tests.paths import PRIMARY, PROBE_DUPLICATE, PROBE_HTML, PROBE_PLAIN, RICH_COMMENT
 
 
 @pytest.fixture
@@ -201,7 +201,7 @@ def test_an_items_own_notes_are_listed_above_its_comments(client, conn):
     comments_pane = page.split('id="comments-pane"', 1)[1]
     box = comments_pane.split('class="pane-notes"', 1)[1].split("</div>", 1)[0]
     assert detail in html_unescape(box)
-    assert "See the import report" in box
+    assert "See the import results" in box
 
 
 def test_a_sections_own_notes_are_listed_above_its_items(client, conn):
@@ -218,3 +218,21 @@ def test_headings_and_fields_carry_guidance(client, conn):
     page = client.get(f"/t/{tree.id}").text
     assert page.count('class="tip"') >= 4
     assert "The export has these codes, not the names Spectora shows." in page
+
+
+def test_the_form_suggests_values_this_template_already_uses(client, conn):
+    tree = imported(client, conn, PROBE_HTML)
+    page = client.get(f"/t/{tree.id}").text
+    used = sorted({c.recommendation for c in tree.comments() if c.recommendation.strip()})
+    listed = page.split('<datalist id="suggest-recommendation">', 1)[1].split("</datalist>", 1)[0]
+    assert sorted(html_unescape(v) for v in re.findall(r'<option value="([^"]*)">', listed)) == used
+    assert len(used) > 1
+    assert 'list="suggest-recommendation"' in page
+
+
+def test_a_copy_links_to_its_originals_import_results(client, conn):
+    tree = imported(client, conn, PRIMARY)
+    copy = client.post(f"/t/{tree.id}/duplicate", follow_redirects=False).headers["location"]
+    assert "Original&#39;s import results" in client.get(copy).text
+    library = client.get("/").text
+    assert "Import results</a>" in library and "Original&#39;s import results</a>" in library
