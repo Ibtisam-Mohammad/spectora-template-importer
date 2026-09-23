@@ -17,13 +17,17 @@ comments. Export. Look for them.
 **If absent:** `MISSING_FROM_EXPORT`, and the import report must say "sections and items that
 contain no comments cannot be exported by Spectora".
 
-### A2. Can a multiple-choice option contain a comma, and how is it encoded?
-Column G is comma-delimited with no visible escaping. If Spectora allows a comma inside a choice,
-the field is ambiguous by construction. If it strips or refuses it, the field is safe.
-**Test:** on a checkbox comment, add choices `Smith, John`, `1,000 sq ft` and `He said "no"`.
-Export. Inspect column G raw.
-**Outcome decides:** whether `split(',')` is correct or whether G must be stored verbatim with a
-warning.
+### A2. Can a multiple-choice option contain a comma? — **CLOSED, no**
+Spectora splits Answer Choices on every comma at input time. `1,000 sq ft` became two choices,
+`1` and `000 sq ft`. No escape syntax exists. `split(',')` on column G is therefore correct.
+Quotes survive. Details in `COLUMN-MAP.md` under column G.
+
+### A3b. What does the `Signature` answer format export as?
+Spectora's Answer Format dropdown has seven options; the column header documents six values.
+`Signature` has no known export value.
+**Test:** create one comment with Answer Format `Signature`. Export.
+**Outcome decides:** whether the answer-type vocabulary is open-ended, and confirms the
+"store unknown enums verbatim" decision.
 
 ### A3. What do `range` and `date` answer types look like?
 Never observed. They are the only documented answer types not yet seen, and `range` is the only
@@ -52,21 +56,22 @@ contains markup", which is a guess.
 
 ## B. Fills in the map. Worth doing, does not change code.
 
-### B1. `Locked`, `Disable Photos`, `Simple Format` value format.
-All three empty on every observed row. Documented as `true`/`false` for two of them; `Simple
-Format` is undocumented.
-**Test:** find each toggle on a comment, turn it on. Export. Note the literal value and, for
-Simple Format, what it changes in the editor.
+### B1. `Locked`, `Disable Photos`, `Simple Format` — **CLOSED, not in the UI**
+No control for any of the three exists in the comment create dialog or edit view, across all
+seven answer formats, nor in the Deficiency dialog. Legacy or API-only. Expect them permanently
+empty for UI-authored templates.
 
 ### B2. Multiple default photos.
 Only `Default Photo 1` has been observed.
 **Test:** add three photos with captions to one comment. Export. Confirm they fill V, X, Z in
 order with captions in W, Y, AA, and that the URL pattern is stable.
 
-### B3. `Recommendation` vocabulary.
-Three slugs observed: `pro`, `monitor`, `cabinet`. The dropdown is "from list".
-**Test:** open the Recommendation dropdown on any deficiency and screenshot the full list, or set
-six different comments to six different recommendations. Export. Map label to slug.
+### B3. `Recommendation` vocabulary — partially open
+Deficiency-only. List begins `No Recommendation`, `Appliance Repair`, `Builder`,
+`Cabinet Contractor`, `Carpentry Contractor`, `Carpet Cleaner` and scrolls further.
+`Cabinet Contractor` → `cabinet`, so the slug looks like the first word lowercased.
+**Remaining test:** set three deficiencies to three different recommendations and export, to
+confirm the derivation rather than assuming it.
 
 ### B4. `Uses`.
 `0` on every row. Presumably increments when a comment is used in a published report.

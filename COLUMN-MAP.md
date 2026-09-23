@@ -39,6 +39,13 @@ under 8 different sections.
 **Double entity-encoded.**
 → Maps to `item.name`. **Item identity is (Section Name, Item Name), never the name alone.**
 
+### Name columns: special characters are accepted
+
+Spectora accepts `&`, `<`, `>` and `"` in section, item and comment names. Verified by creating
+a section `ZZ Probe & Test <x>`, an item `Item & <angle> "quote"` and a comment
+`Smith & Sons <test> "quoted"`, all of which saved and display correctly. Their encoding depth in
+the export is pending a round trip.
+
 ### C — `Comment Name`
 The label shown in Spectora's comment list. Plain text. 100% filled, 334 distinct. Repeats are
 intentional and scoped to their item: `Improper Installation` appears 10 times, `Material` 8.
@@ -69,6 +76,12 @@ the identity.
 Severity, **defect rows only**. Filled on 302 of 392 (77.0%), which is exactly the defect count.
 Blank on all 78 info and all 12 limit rows. Observed values `0` (281) and `1` (21) in the stock
 file; `-1` confirmed real in the second export after a comment was set to Low.
+**The UI control is three icon buttons**, shown only when creating or editing a Deficiency:
+a wrench, a minus-in-circle, and a warning triangle. Three buttons, three documented values,
+so the mapping to `-1` / `0` / `1` is positional. Confirmed by opening the create dialog for each
+type: Informational and Limitation comments show neither this control nor Recommendation, and
+their dialogs are otherwise identical, which is why the column is blank on exactly those rows.
+All seven Answer Formats are offered on all three comment types.
 → Maps to `comment.severity`, nullable. Do not render a severity chip on info or limit
 comments.
 
@@ -77,18 +90,52 @@ The UI's **Answer Choices**. Filled on 72 of 392 (18.4%), exactly matching the 7
 rows in column K. Comma-separated list, e.g. `Wood, Glass, Steel, Hollow Core, Single Pane,
 Fiberglass`.
 **Single entity-encoded**, unlike A, B and D. See below.
-→ Maps to `comment.choices[]`. Split on comma, trim. Note values can legitimately contain
-`&`, as in `Knob & Tube`.
+
+**A choice can never contain a comma, so splitting on comma is safe.** Verified in the UI:
+Spectora splits the field on every comma *at input time*. Typing
+`Smith, John, 1,000 sq ft, He said "no", Plain` into Answer Choices produced six choices, not
+five: `Smith`, `John`, `1`, `000 sq ft`, `He said "no"`, `Plain`. The value `1,000 sq ft` was
+destroyed on entry. There is no escape syntax and the UI offers no way to enter a literal comma.
+
+Two consequences. `split(',')` on column G is correct, not a guess. And this is a **data-entry
+trap in Spectora itself**: an inspector typing a thousands separator silently gets two wrong
+choices, and the export faithfully carries the damage. Worth surfacing in the import report as an
+observation, not an error, when a choice list contains a bare numeric fragment.
+
+Quotes survive intact: `He said "no"` round-tripped through the UI unchanged.
+→ Maps to `comment.choices[]`. Split on comma, trim. Values can contain `&`, quotes and
+parentheses, as in `Knob & Tube` and `Fahrenheit (F)`.
 
 ### H — `Unit Type Options (numeric answers only, comma-separated)`
 Filled on 3 rows only (0.8%): `Fahrenheit (F), Celsius (C)`, `SEER`, `gallons`. Applies to
 numeric answer types.
+
+Confirmed in the UI: both the `Number` and `Numeric Range` formats expose a field labelled
+"Unit Type Choices (comma-separated)" with placeholder `kg, lbs`. The `Multiple Choices` format
+exposes a differently-labelled field, "Answer Choices (comma-separated)", placeholder
+`Concrete, Wood, Metal`, which is column G. Two comma-separated fields, two formats, two columns.
+Note the first observed value, `Fahrenheit (F), Celsius (C)`, contains parentheses but no comma
+inside a unit.
 → Optional. Map to `comment.unit_options[]` or record as unsupported.
 
 ### I — `Recommendation (from list)`
 Filled on 4 rows (1.0%). Lowercase slugs from a fixed Spectora list: `pro` ×3, `monitor` ×1,
-plus `cabinet` observed in the second export. The vocabulary is not documented, so treat unseen
-values as opaque.
+plus `cabinet` observed in the second export.
+
+**Deficiency-only, and a long alphabetical list.** The Recommendation dropdown appears in the
+Deficiency create dialog and not in the Informational one. Its first entries are
+`No Recommendation`, `Appliance Repair`, `Builder`, `Cabinet Contractor`, `Carpentry Contractor`,
+`Carpet Cleaner`, `Chimney Repair Contractor`, `Chimney Sweep`, `Cleaning Service`, and it
+scrolls well beyond those: it is a full trade directory. `Cabinet Contractor` is the source of
+the `cabinet` slug, which suggests first-word-lowercased, but `Chimney Repair Contractor` and
+`Chimney Sweep` would collide under that rule, so the real key is something else or Spectora
+tolerates collisions. Either way: **derive nothing, store the slug verbatim, and treat the
+vocabulary as open.** A lookup table from slug to display label is a convenience seeded from
+observed values, never a precondition for import, and an unknown slug displays as itself.
+
+Note one observed `pro` sits on an Informational row (`Inspection Details / General /
+Temperature`), so the field can carry a value even where the current UI would not offer it.
+The vocabulary is not documented, so treat unseen values as opaque.
 → Map verbatim to `comment.recommendation`, or declare unsupported. Do not invent a
 display label for a slug you have not seen.
 
@@ -109,11 +156,59 @@ Enum, 100% filled. Observed: `boolean` 315, `checkbox` 72, `number` 4, `text` 1.
 values `date` and `range` do not occur in this template.
 Rendered in Spectora's UI as the small icon beside the comment name; `number` shows `#`,
 `checkbox` shows a list glyph.
-→ Maps to `comment.answer_type`. Accept all six documented values, not just the four present.
+
+**The UI labels do not match the export values, and two of them are inverted.** Spectora's
+"Answer Format" dropdown offers seven options; the header documents six values. Mapping, with
+confidence noted:
+
+| UI "Answer Format" | Export value | Type-specific field in the UI | Confidence |
+| --- | --- | --- | --- |
+| `Checkbox (i.e. Yes/No, Present/Not Present)` | **`boolean`** | "Default to checked?" on edit | strong |
+| `Multiple Choices (i.e. checkboxes)` | **`checkbox`** | "Answer Choices (comma-separated)" | strong |
+| `Date` | `date` | none | assumed |
+| `Number` | `number` | "Unit Type Choices (comma-separated)" | strong |
+| `Numeric Range` | `range` | "Unit Type Choices (comma-separated)" | assumed |
+| `Signature` | **unknown** | none | **untested** |
+| `Text` | `text` | none | assumed |
+
+**Which default fields each format exposes**, confirmed by opening one comment of every format:
+
+| UI format | Choices field | Default Value | Default Value 2 | Comment-list icon |
+| --- | --- | --- | --- | --- |
+| Checkbox (Yes/No) | none | "Default to checked?" tick | no | green tick |
+| Multiple Choices | Answer Choices | **no field at all** | no | green list |
+| Number | Unit Type Choices | yes | no | green `#` |
+| Numeric Range | Unit Type Choices | yes | **yes** | green `#` |
+| Text | none | yes | no | green `A` |
+| Date | none | **no field at all** | no | green calendar |
+| Signature | none | **no field at all** | no | green pencil |
+
+So column M `Default Value 2` is reachable only from `Numeric Range`, and column L `Default
+Value` is unreachable for Multiple Choices, Date and Signature. The icon does not identify the
+format uniquely: `#` is shared by Number and Numeric Range.
+
+The inversion is the trap. The export value `checkbox` is **not** the UI's "Checkbox"; it is the
+UI's "Multiple Choices". This is confirmed by the measured invariant that `Multiple Choice
+Options` is populated on exactly the 72 `checkbox` rows and no others, and the UI shows the
+"Answer Choices" field only for the "Multiple Choices" format. Anyone mapping the UI's own
+vocabulary onto the export will silently swap two formats.
+
+**`Signature` is a seventh format with no documented export value.** It appears in the dropdown
+but not in the column header's list of six. Until observed, treat any unknown `Answer Type` as
+an `UNEXPECTED_VALUE` import issue and store it verbatim; this is exactly the case the "text,
+not a Postgres enum" decision was made for.
+→ Maps to `comment.answer_type`. Accept at least seven values, and do not reject an eighth.
 
 ### L — `Default Value`
 Filled on 1 row only (0.3%), value `true`.
-→ Low-value. Map or declare unsupported; say which.
+
+**This is the UI's per-format default, and its meaning depends on `Answer Type`.** For the
+`Checkbox (Yes/No)` format the edit view shows a single "Default to checked?" tick, which is the
+source of the lone `true`. The defaults for Number, Numeric Range, Date and Text have not been
+observed and are not present in the create dialog, so they are presumably on the edit view of a
+comment of that format.
+→ Store verbatim as text. Do not coerce to boolean; the same column holds a number for
+`number`, a date for `date`, and a range floor for `range`.
 
 ### M — `Default Value 2 (for "range" types)`
 **Empty on all 392 rows.** Only meaningful for `range`, which this template never uses.
@@ -167,13 +262,22 @@ contain spaces.
 `1000` on **all 392 rows**. A system default, not customer data.
 
 ### R — `Locked`
-**Empty on all 392 rows.** Documented as `true`/`false`.
+**Empty on all 392 rows, and no control for it exists anywhere in the comment UI.**
+Checked the create dialog and the edit view for all seven answer formats, and the Deficiency
+dialog. Likely legacy or API-only. Expect it to stay empty for any template authored through the
+web UI. Documented as `true`/`false`.
 
 ### S — `Simple Format`
-**Empty on all 392 rows.** Semantics undocumented.
+**Empty on all 392 rows, and no control for it exists anywhere in the comment UI.**
+Checked the create dialog and the edit view for all seven answer formats, and the Deficiency
+dialog. Likely legacy or API-only. Expect it to stay empty for any template authored through the
+web UI. Semantics undocumented.
 
 ### T — `Disable Photos`
-**Empty on all 392 rows.** Documented as `true`/`false`.
+**Empty on all 392 rows, and no control for it exists anywhere in the comment UI.**
+Checked the create dialog and the edit view for all seven answer formats, and the Deficiency
+dialog. Likely legacy or API-only. Expect it to stay empty for any template authored through the
+web UI. Documented as `true`/`false`.
 
 ### U — `Uses` — degenerate
 `0` on **all 392 rows**. Presumably a usage counter, reset or unused on a stock template.
