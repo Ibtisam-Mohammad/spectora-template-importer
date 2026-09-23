@@ -25,8 +25,8 @@ Each rule gives its evidence and the module that implements it.
 
 - **F1** Identify an upload by its content, an OOXML zip signature, never by its `.xls` extension.
   Evidence: `docs/format/spectora-format.md`, "The file, verified". Module: `app/spectora/workbook.py`.
-- **F2** Treat every upload as hostile: parse XML with `defusedxml`, cap the uncompressed size and entry count of the zip, and cap the upload at 4 MB by reading one byte past the limit, answering with a clear message rather than the platform's own 413.
-  Evidence: the upload is customer-supplied; Vercel rejects bodies over 4.5 MB. Module: `app/spectora/workbook.py`, `app/web/routes/library.py`.
+- **F2** Treat every uploaded file as hostile: parse XML with `defusedxml`, and cap the zip's entry count and total uncompressed size, refusing rather than expanding past the caps.
+  Evidence: the upload is customer-supplied. Module: `app/spectora/workbook.py`.
 - **F3** Find the worksheet through `workbook.xml` and its relationships, not a hard-coded path. If there is more than one sheet, raise an issue and read the first.
   Evidence: every export seen has one sheet, `Sheet1`; a hard-coded path would be template knowledge. Module: `app/spectora/workbook.py`.
 - **F4** Locate every cell by its `r` reference. An absent `<c>` and a present `<c>` with no value both mean empty, and the difference is kept in the raw row.
@@ -39,6 +39,8 @@ Each rule gives its evidence and the module that implements it.
   Evidence: `docs/design/preservation.md` §3. Module: `app/spectora/workbook.py`, `app/db/imports.py`.
 - **F8** Never drop a row silently. A row with a blank Section Name or Item Name raises `ROW_SKIPPED` with its row number. Fully empty rows are counted.
   Evidence: the brief, "do not quietly drop or rewrite it". Module: `app/spectora/parse.py`.
+- **F9** Cap an upload at 4 MB by reading one byte past the limit, and answer with a clear message rather than the platform's own error.
+  Evidence: Vercel rejects request bodies over 4.5 MB with its own error page. Module: `app/web/routes/library.py`.
 
 ## Text
 
