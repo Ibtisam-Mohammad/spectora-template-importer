@@ -5,6 +5,7 @@
 {% block topbar %}
 <span class="template-name">{{ template.name }}</span>
 <nav class="topbar-actions">
+  {% if run_id %}<a href="/runs/{{ run_id }}">Import report</a>{% endif %}
   <a href="/">Library</a>
 </nav>
 {% endblock %}

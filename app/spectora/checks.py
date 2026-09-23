@@ -130,7 +130,7 @@ def _merged_section_issues(template: ParsedTemplate, columns: ColumnMap) -> list
                     Severity.WARNING,
                     f"In section '{section.name}', {names} each appear more than once. Spectora "
                     "exports two neighbouring sections with the same name as one section. If "
-                    "you had two, split this one.",
+                    "you had two, the items of both are in this one.",
                     Scope.SECTION,
                     section.first_row,
                     columns.letter("item_name"),

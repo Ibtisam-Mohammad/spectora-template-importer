@@ -24,6 +24,17 @@ window.addEventListener("pageshow", () => {
   }
 });
 
+// A link to one comment, such as one from the import report, opens that comment's card.
+function openLinkedComment() {
+  const target = location.hash && document.getElementById(location.hash.slice(1));
+  if (target && target.matches("details.comment")) {
+    target.open = true;
+    target.scrollIntoView({ block: "start" });
+  }
+}
+window.addEventListener("DOMContentLoaded", openLinkedComment);
+window.addEventListener("hashchange", openLinkedComment);
+
 // Panes: mark the clicked section or item as selected while the panes beside it load.
 document.addEventListener("click", (event) => {
   const link = event.target.closest("a[data-select]");

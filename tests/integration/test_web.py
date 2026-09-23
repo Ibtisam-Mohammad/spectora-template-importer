@@ -9,7 +9,7 @@ from app import config
 from app.db.pool import close_pool
 from app.db.templates import read_tree
 from app.main import app
-from tests.paths import PRIMARY, PROBE_DUPLICATE, RICH_COMMENT
+from tests.paths import PRIMARY, PROBE_DUPLICATE, PROBE_PLAIN, RICH_COMMENT
 
 
 @pytest.fixture
@@ -34,7 +34,10 @@ def upload(client, path, filename=None):
 def imported(client, conn, path):
     response = upload(client, path)
     assert response.status_code == 303
-    template_id = response.headers["location"].removeprefix("/t/")
+    run_id = response.headers["location"].removeprefix("/runs/")
+    [template_id] = conn.execute(
+        "select template_id from import_run where id = %s", [run_id]
+    ).fetchone()
     return read_tree(conn, template_id)
 
 
@@ -112,3 +115,75 @@ def test_an_unknown_template_is_not_found(client):
     response = client.get("/t/00000000-0000-0000-0000-000000000000")
     assert response.status_code == 404
     assert "no template at this address" in response.text
+
+
+# ---------------------------------------------------------------- the import report
+
+
+def report_of(client, path) -> str:
+    response = upload(client, path)
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/runs/")
+    return client.get(response.headers["location"]).text
+
+
+def numbers(page: str, label: str) -> list[str]:
+    row = page.split(f"<th>{label}</th>", 1)[1].split("</tr>", 1)[0]
+    return re.findall(r'class="num">([^<]*)<', row)
+
+
+@pytest.mark.rule("R3")
+def test_an_upload_lands_on_its_report_with_the_verification_result(client):
+    page = report_of(client, PRIMARY)
+    assert "Verified before saving." in page
+    assert "Re-derived just now." in page
+    assert numbers(page, "Sections") == ["13", "13"]
+    assert numbers(page, "Items") == ["69", "69"]
+    assert numbers(page, "Comments") == ["392", "392"]
+    assert numbers(page, "Deficiencies") == ["302", "302"]
+    assert numbers(page, "Informational") == ["78", "78"]
+    assert numbers(page, "Limitations") == ["12", "12"]
+
+
+@pytest.mark.rule("R4")
+def test_the_report_shows_coverage_and_the_column_ledger(client):
+    page = report_of(client, PRIMARY)
+    assert page.count('class="figure-value">100%<') == 3
+    assert "Where each of the 42 columns went" in page
+
+
+@pytest.mark.rule("R5")
+def test_every_report_separates_missing_from_the_export_and_not_supported(client):
+    page = report_of(client, PRIMARY)
+    missing = page.index("Missing from Spectora's export")
+    unsupported = page.index("Not supported by this importer")
+    assert missing < unsupported
+    assert "Sections and items that hold no comments" in page[missing:unsupported]
+    assert "other inspection software" in page[unsupported:]
+
+
+@pytest.mark.rule("R6")
+def test_each_note_names_its_row_and_column_and_links_to_its_node(client):
+    page = report_of(client, PROBE_DUPLICATE)
+    assert "row 126, column J" in page
+    links = re.findall(r'<a href="(/t/[^"]+)">Show</a>', page)
+    assert links
+    editor = client.get(html_unescape(links[0]).split("#")[0])
+    assert editor.status_code == 200
+
+
+@pytest.mark.rule("H6")
+def test_the_report_lists_markup_that_will_not_display(client):
+    page = report_of(client, PRIMARY)
+    assert "Kept but not displayed:" in page
+    assert "style position 1" in page
+
+
+def test_the_plain_text_export_is_flagged_first(client):
+    notes = report_of(client, PROBE_PLAIN).split("<h2>Import notes</h2>", 1)[1]
+    assert notes.index("Plain Text export") < notes.index("Comments sharing an order number")
+
+
+def test_an_unknown_report_is_not_found(client):
+    response = client.get("/runs/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == 404

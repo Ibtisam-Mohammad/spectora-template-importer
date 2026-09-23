@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% set run = report.run %}
+{% block title %}Import report: {{ run.source_filename }}{% endblock %}
+{% block topbar %}
+<span class="template-name">Import report</span>
+<nav class="topbar-actions">
+  {% if run.template_id %}<a href="/t/{{ run.template_id }}">Open template</a>{% endif %}
+  <a href="/">Library</a>
+</nav>
+{% endblock %}
+{% block main %}
+<section class="page report">
+  <header class="report-head">
+    <h1>{{ run.source_filename }}</h1>
+    <p class="muted">
+      {{ report.verdict_label }} &middot; imported {{ run.started_at | when }}
+      {% if run.template_name %}&middot; now the template <a href="/t/{{ run.template_id }}">{{ run.template_name }}</a>
+      {% elif not run.template_id %}&middot; the template has since been deleted{% endif %}
+    </p>
+  </header>
+
+  {% if run.verified_at %}
+  <div class="banner banner-ok">
+    <strong>Verified before saving.</strong>
+    All {{ run.rows_total + 1 }} rows of the sheet were stored cell for cell, and the template
+    read back through the editor's own query matched the parse field for field, before the
+    import was committed ({{ run.verified_at | when }}).
+  </div>
+  {% endif %}
+  {% if report.rederived_matches %}
+  <div class="banner banner-ok">
+    <strong>Re-derived just now.</strong> Parsing the stored rows again, without the uploaded
+    file, gives the same structure as the import.{% if report.parser_changed %} The parser has
+    changed since this import, and the result still agrees.{% endif %}
+  </div>
+  {% else %}
+  <div class="banner banner-note">
+    <strong>Re-derived just now, with a different result.</strong>
+    {% if report.parser_changed %}The parser has changed since this import (version
+    {{ run.parser_version }}), which explains the difference below.{% else %}The stored rows no
+    longer give the structure recorded at import. Please report this.{% endif %}
+  </div>
+  {% endif %}
+
+  <h2>Structure</h2>
+  <table class="grid structure">
+    <thead><tr><th></th><th class="num">In the file</th><th class="num">Imported</th></tr></thead>
+    <tbody>
+      {% for label, key in [("Rows below the header", "rows"), ("Empty rows", "empty_rows"),
+                            ("Rows that could not be placed", "rows_skipped"),
+                            ("Sections", "sections"), ("Items", "items"), ("Comments", "comments")] %}
+      <tr{% if report.in_file[key] != report.imported[key] %} class="differs"{% endif %}>
+        <th>{{ label }}</th><td class="num">{{ report.in_file[key] }}</td><td class="num">{{ report.imported[key] }}</td>
+      </tr>
+      {% endfor %}
+      {% for type in report.types %}
+      <tr class="sub{% if type.in_file != type.imported %} differs{% endif %}">
+        <th>{{ type.label }}</th><td class="num">{{ type.in_file }}</td><td class="num">{{ type.imported }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <th>Default photos</th><td class="num">{{ run.photos_found }}</td>
+        <td class="num">{{ run.photos_stored }} copied</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Coverage</h2>
+  <div class="coverage">
+    {% for figure in report.coverage %}
+    <div class="card figure">
+      <div class="figure-value">{{ figure.percent }}</div>
+      <div class="figure-label">{{ figure.label }}</div>
+      <div class="muted">{{ figure.part }} of {{ figure.whole }} filled cells</div>
+      <p>{{ figure.meaning }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2>Import notes</h2>
+  {% if report.issue_groups %}
+  {% for group in report.issue_groups %}
+  <details class="card issue-group severity-{{ group.severity }}"{% if group.severity != "info" %} open{% endif %}>
+    <summary><strong>{{ group.label }}</strong> <span class="count">{{ group.issues | length }}</span>
+      <span class="badge">{{ group.severity }}</span></summary>
+    <ul class="issues">
+      {% for issue in group.issues %}
+      <li>
+        {% if issue.row_number or issue.column_letter %}
+        <span class="where">{% if issue.row_number %}row {{ issue.row_number }}{% endif %}{% if issue.row_number and issue.column_letter %}, {% endif %}{% if issue.column_letter %}column {{ issue.column_letter }}{% endif %}</span>
+        {% endif %}
+        {{ issue.detail }}
+        {% set url = node_url(issue) %}{% if url %}<a href="{{ url }}">Show</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endfor %}
+  {% else %}
+  <p class="empty">Nothing needed attention.</p>
+  {% endif %}
+
+  <h2>Formatting and markup</h2>
+  <p>
+    {{ report.markup.comments_with_markup }} of {{ report.in_file.comments }} comments contain
+    HTML. It is stored exactly as exported and made safe only when displayed.
+  </p>
+  {% if report.markup.inventory %}
+  <table class="grid markup">
+    <tbody>
+      {% for line in report.markup.inventory %}
+      <tr><th>{{ line.group }}</th>
+        <td>{% for name, count in line.entries %}<span class="chip">{{ name }} {{ count }}</span> {% endfor %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if report.markup.not_displayed %}
+  <p><strong>Kept but not displayed:</strong>
+    {% for entry, count in report.markup.not_displayed %}<span class="chip">{{ entry }} {{ count }}</span> {% endfor %}
+    The comments involved are listed under import notes.</p>
+  {% else %}
+  <p><strong>Everything is displayed.</strong> No markup is held back by the display policy.</p>
+  {% endif %}
+  {% if report.markup.editor_state_removed %}
+  <p class="muted">{{ report.markup.editor_state_removed }} editing-state attributes left by
+    Spectora's editor (such as contenteditable) are not displayed; they carry no formatting.</p>
+  {% endif %}
+
+  <h2>What is not here, and why</h2>
+  <div class="two-up">
+    <div class="card">
+      <h3>Missing from Spectora's export</h3>
+      <p class="muted">Spectora does not put these in the file, so no importer can bring them in.</p>
+      <ul>{% for line in report.missing_from_export %}<li>{{ line }}</li>{% endfor %}</ul>
+    </div>
+    <div class="card">
+      <h3>Not supported by this importer</h3>
+      <p class="muted">Limits of this app, not of the file.</p>
+      <ul>{% for line in report.not_supported %}<li>{{ line }}</li>{% endfor %}</ul>
+    </div>
+  </div>
+
+  <h2>Columns</h2>
+  <details class="card">
+    <summary>Where each of the {{ report.ledger | length }} columns went</summary>
+    <table class="grid ledger">
+      <thead><tr><th>Column</th><th>Header</th><th>Outcome</th><th class="num">Filled cells</th><th>Field</th></tr></thead>
+      <tbody>
+        {% for entry in report.ledger %}
+        <tr class="outcome-{{ entry.outcome }}">
+          <td>{{ entry.column_letter }}</td><td>{{ entry.header }}</td><td>{{ entry.outcome }}</td>
+          <td class="num">{{ entry.cell_count }}</td><td>{{ entry.target_field or "" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+
+  <p class="muted file-facts">
+    SHA-256 {{ run.source_sha256 }} &middot; parser version {{ run.parser_version }}
+  </p>
+</section>
+{% endblock %}

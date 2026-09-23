@@ -68,7 +68,7 @@ def import_upload(request: Request, file: UploadFile | None = None) -> Response:
     finally:
         if photos:
             photos.close()
-    return RedirectResponse(f"/t/{outcome.template_id}", status_code=303)
+    return RedirectResponse(f"/runs/{outcome.run_id}", status_code=303)
 
 
 def _library(request: Request, problem: UploadProblem | None = None, status: int = 200) -> Response:

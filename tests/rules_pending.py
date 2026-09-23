@@ -7,8 +7,6 @@ here, and forbids a rule from being both. The build is complete when this set is
 PENDING: frozenset[str] = frozenset(
     {
         "O5",
-        "H6",
-        "R5",
         "E1", "E2", "E3", "E4", "E5", "E6",
         "Z2",
     }

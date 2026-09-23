@@ -150,14 +150,12 @@ def neutralised(stored_html: str) -> Counter[str]:
     return markup_inventory(stored_html) - markup_inventory(render_comment_html(stored_html))
 
 
+def is_editor_state(entry: str) -> bool:
+    """True for an inventory entry naming one of Froala's editing-state attributes."""
+    return entry.startswith("attribute ") and entry.split(" ")[1] in EDITOR_STATE_ATTRIBUTES
+
+
 def neutralised_content(stored_html: str) -> Counter[str]:
     """What rendering removes, leaving out Froala's editing-state attributes."""
-    return Counter(
-        {
-            entry: count
-            for entry, count in neutralised(stored_html).items()
-            if not (
-                entry.startswith("attribute ") and entry.split(" ")[1] in EDITOR_STATE_ATTRIBUTES
-            )
-        }
-    )
+    lost = neutralised(stored_html)
+    return Counter({entry: count for entry, count in lost.items() if not is_editor_state(entry)})

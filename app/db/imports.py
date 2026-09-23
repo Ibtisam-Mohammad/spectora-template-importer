@@ -7,6 +7,7 @@ Ids are generated here rather than by the database, so issues can be linked to t
 are about without reading anything back.
 """
 
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -126,8 +127,8 @@ def _insert_run(conn: psycopg.Connection, ids: ImportIds, new: NewImport) -> Non
     conn.execute(
         "insert into import_run (id, template_id, source_filename, source_sha256, verdict,"
         " parser_version, rows_total, empty_rows, rows_skipped, sections_created, items_created,"
-        " comments_created, photos_found, photos_stored, started_at)"
-        " values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        " comments_created, comment_types, photos_found, photos_stored, started_at)"
+        " values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
         [
             ids.run_id,
             ids.template_id,
@@ -141,6 +142,7 @@ def _insert_run(conn: psycopg.Connection, ids: ImportIds, new: NewImport) -> Non
             len(template.sections),
             len(template.items()),
             len(template.comments()),
+            Jsonb(Counter(comment.comment_type for comment in template.comments())),
             len(photos),
             sum(1 for photo in photos if new.photo_paths.get(photo.url)),
             new.started_at,

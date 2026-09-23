@@ -29,6 +29,7 @@ create table import_run (
   sections_created  integer not null,
   items_created     integer not null,
   comments_created  integer not null,
+  comment_types     jsonb not null,
   photos_found      integer not null,
   photos_stored     integer not null,
   started_at        timestamptz not null,

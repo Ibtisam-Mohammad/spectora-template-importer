@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException
 
 from app.db.pool import close_pool
 from app.web.database import DatabaseNotConfigured
-from app.web.routes import editor, library
+from app.web.routes import editor, library, report
 from app.web.templating import STATIC_DIR, templates
 
 
@@ -23,6 +23,7 @@ app = FastAPI(title="Spectora template importer", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(library.router)
 app.include_router(editor.router)
+app.include_router(report.router)
 
 
 @app.exception_handler(HTTPException)
