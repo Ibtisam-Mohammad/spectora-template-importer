@@ -1,5 +1,8 @@
 # Remaining unknowns, and the one session that closes them
 
+> **Evidence log.** This document records what was measured and why. The rules the importer
+> follows are maintained in `docs/rules.md`; where the two disagree, `docs/rules.md` wins.
+
 > **Status after `probe-html.xls` and `probe-plain.xls`: every item in section A is closed, and
 > every item in section B except B4 (`Uses`, needs a published report). Results are recorded
 > inline below and in `docs/format/column-map.md`, `docs/format/eda-findings.md` and `docs/design/preservation.md`.
@@ -101,7 +104,7 @@ lags", which changes the wording of the import warning, not the code.
 
 ## C. Already known to be unrecoverable from the export. No test can help.
 
-- Section and item display order (no column; confirmed unstable across exports).
+- Section and item display order: no column carries it; see `docs/format/eda-findings.md` §3.
 - Section icons, optional/required flags, Standards of Practice references, reminders, info-only
   flags, overview-grid membership.
 - Template-level settings: Header Text, Display Options, Item Ratings configuration, Defect

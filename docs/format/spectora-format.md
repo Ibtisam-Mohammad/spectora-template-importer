@@ -1,5 +1,8 @@
 # Spectora template export: verified format reference
 
+> **Evidence log.** This document records what was measured and why. The rules the importer
+> follows are maintained in `docs/rules.md`; where the two disagree, `docs/rules.md` wins.
+
 **Every fact below marked "verified" was confirmed by parsing a real Spectora HTML-Text export
 (`InterNACHI Residential`, 392 comments) with an XML parser, not inferred from documentation.**
 
@@ -100,8 +103,9 @@ strictly to the documented list silently ignores 14 columns.
 not `Comment Type`. **Match headers exactly against the 42 known strings**, parenthetical
 included. They were byte-identical in every export examined, HTML and Plain. Prefix or pattern
 matching would be guessing; `Default Value` is a prefix of `Default Value 2`, which shows why.
-If Spectora ever changes a header, report the unknown and the missing header by name and stop,
-rather than map a column by resemblance.
+If Spectora ever changes a header, report the unknown and the missing header by name rather
+than map a column by resemblance. The file is refused only when Section Name or Item Name is
+missing (rule F6).
 
 ---
 
@@ -130,7 +134,7 @@ still holding HTML entities. What you do next must differ by column:
 Same-looking input, opposite handling. This is the single easiest way to silently corrupt a
 customer's template.
 
-### 2. Group items on section **and** item, never on item name alone
+### 2. Items are blocks within their section, never names
 
 Verified on InterNACHI Residential: **61 distinct item names resolve to 69 actual items.** Eight
 names appear under more than one section. OpenInspection reports the same pattern more severely
@@ -140,6 +144,9 @@ on a larger file: 76 names, 90 items, one name appearing under eleven sections.
 and you merge them, concatenate their comment lists, and produce a template that looks
 plausible and is wrong. If you display an import count, display the one your grouping produced,
 because that is the number the inspector will check against.
+
+The adopted rule goes further: a new contiguous block is a new section or item even when its
+name repeats (rules S2 and S3), because Spectora allows duplicate names.
 
 ### 3. `Order (w/i item)` is not scoped to the item
 
@@ -157,7 +164,7 @@ item interleaves the types and puts two comments at position zero.
 **The reconstruction rule that works**, measured at 64 of 69 items producing a clean `0..n-1`
 in every type group:
 
-1. Group rows by `(Section Name, Item Name)`.
+1. Take each item's rows, which form one contiguous block.
 2. Within the item, group by `Comment Type`.
 3. Sort by `Order (w/i item)` **within each type group**.
 4. Render the type groups in the order the Spectora UI uses: **Informational, Limitations,
@@ -198,23 +205,11 @@ informational comments such as Exterior Entry Door carry their content in the an
 and have no body at all. An importer that treats an empty `Comment Text` as a broken row will
 reject valid data.
 
-### The one discrepancy
+### Item order
 
-**Item order inside a section does not match.** For `Exterior`, the UI shows Vegetation,
-Grading, Drainage & Retaining Walls before Walkways, Patios & Driveways. The file has them the
-other way round. Section order matched perfectly; item order did not.
-
-Two possible causes, unresolved:
-
-1. The export examined here came from a different account on a different date, and the two
-   copies of the stock template genuinely differ.
-2. The export does not preserve item ordering, which is consistent with there being **no order
-   column above the comment level**.
-
-Either way the safe reading is that **first-appearance order is an order, not necessarily the
-inspector's order**. Resolve it by exporting your own copy and diffing it against your own
-screen. If cause 2 holds, say so in the import report rather than presenting a reordered
-template as faithful.
+Resolved in `docs/format/eda-findings.md` §3. The export follows a persisted item order and
+tracked a deliberate reorder in the editor, but no column carries it, so the importer reports
+item order as best-effort.
 
 ---
 
@@ -238,8 +233,7 @@ columns (empty), `Locked`, `Simple Format`, `Disable Photos`, `Default Location`
 - `Default Estimate Min` = `10` and `Default Estimate Max` = `1000` on **all 392 rows**
 - `Uses` = `0` on all 392 rows
 
-Those are system defaults, not inspector data. Surfacing them in the editor as if the customer
-authored them is worse than dropping them.
+Those are system defaults in these templates. They are stored anyway (rule V8).
 
 ---
 
@@ -314,18 +308,4 @@ public integration surface.
 
 ## What this means for the build
 
-1. **Deterministic parser, no model.** The layout is fixed, published and verified. A language
-   model in the import path adds a hallucination surface, an extra graded deliverable on
-   failure handling, and latency during a live on-camera import, in exchange for nothing.
-2. **Detect by file signature**, unzip, read `xl/worksheets/sheet1.xml`, use a real XML parser.
-   A regex over the sheet XML will swallow self-closing `<c/>` cells and shift every column.
-3. **Validate the header row against the 42 known names**, normalising the parenthetical
-   suffixes. Report unknown and missing columns rather than failing silently.
-4. **Decode entities per column type**, plain text versus HTML, as above.
-5. **Key items on (section, item)**, order by first appearance, and sort comments within type.
-6. **Two honest buckets in the import report.** Missing from the export, citing the vendor list
-   above. Not modelled by this importer, for columns you deliberately skip. Never blend them.
-7. **Suppress degenerate defaults** rather than presenting `10` / `1000` / `0` as the
-   customer's own configuration.
-8. **Generalisation is cheap**, because the layout is fixed. Hardcode nothing to specific
-   section or item names and a different template in the same format parses unchanged.
+Maintained as `docs/rules.md`.

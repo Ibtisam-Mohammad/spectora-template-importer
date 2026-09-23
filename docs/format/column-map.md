@@ -1,5 +1,8 @@
 # Column definition map
 
+> **Evidence log.** This document records what was measured and why. The rules the importer
+> follows are maintained in `docs/rules.md`; where the two disagree, `docs/rules.md` wins.
+
 Every column of `fixtures/spectora/internachi-residential-2026-09-22.xls`, the Spectora **Export HTML Text**
 export committed to this repo.
 
@@ -97,8 +100,7 @@ needed.
 ### C — `Comment Name`
 The label shown in Spectora's comment list. Plain text. 100% filled, 334 distinct. Repeats are
 intentional and scoped to their item: `Improper Installation` appears 10 times, `Material` 8.
-No ampersands occur in either file examined, so its encoding depth is untested; treat it as A
-and B. 11 values carry leading or trailing whitespace.
+`probe-html.xls` confirms it is double entity-encoded, like A and B. 11 values carry leading or trailing whitespace.
 **Not unique within an item:** `Fireplace / Damper Doors` holds two comments both named
 `Damper Inoperable`.
 → Maps to `comment.name`. **Comment identity must be a surrogate key plus row position, never
@@ -118,7 +120,8 @@ Enum, 100% filled, exactly 3 values: `defect` 302, `info` 78, `limit` 12.
 Maps one-to-one onto Spectora's UI buckets Informational / Limitations / Deficiencies, and onto
 Hive Inspect's documented Information / Limitations / Defects or deficiencies. The mapping is
 the identity.
-→ Maps to `comment.type`. Store as an enum, not free text.
+→ Maps to `comment.comment_type`, stored as text rather than a database enum so an unseen
+value can be kept and reported (rule V1).
 
 ### F — `Category (-1: Low, 0: Med, 1: High)`
 Severity, **defect rows only**. Filled on 302 of 392 (77.0%), which is exactly the defect count.
@@ -166,7 +169,7 @@ exposes a differently-labelled field, "Answer Choices (comma-separated)", placeh
 `Concrete, Wood, Metal`, which is column G. Two comma-separated fields, two formats, two columns.
 Note the first observed value, `Fahrenheit (F), Celsius (C)`, contains parentheses but no comma
 inside a unit.
-→ Optional. Map to `comment.unit_options[]` or record as unsupported.
+→ Maps to `comment.unit_options[]` (rule T3).
 
 ### I — `Recommendation (from list)`
 Filled on 4 rows (1.0%). Lowercase slugs from a fixed Spectora list: `pro` ×3, `monitor` ×1,
@@ -201,8 +204,7 @@ It is the only slug that appears on `info` and `limit` rows. This explains the `
 Note one observed `pro` sits on an Informational row (`Inspection Details / General /
 Temperature`), so the field can carry a value even where the current UI would not offer it.
 The vocabulary is not documented, so treat unseen values as opaque.
-→ Map verbatim to `comment.recommendation`, or declare unsupported. Do not invent a
-display label for a slug you have not seen.
+→ Maps to `comment.recommendation`, verbatim (rule V6).
 
 ### J — `Order (w/i item)`
 Integer, 100% filled, values 0–12 in this file. **The name is misleading: the counter is scoped
@@ -321,7 +323,7 @@ Spectora default. The point stands regardless of who added it: a real customer's
 any label, so no delimiter is safe for decomposing this field, and a tokeniser that splits on
 commas or spaces will mis-handle real data.
 
--> Maps to `comment.default_location` as a **verbatim string**. Do not model it as a tag array.
+→ Maps to `comment.default_location` as a **verbatim string**. Do not model it as a tag array.
 Tokenising against the 21 stock labels is possible as a best-effort display aid, flagged as
 such, and will fail on any account with custom tags. Trim for display only; store the leading
 space.
@@ -332,10 +334,10 @@ contain spaces.
 
 
 ### P — `Default Estimate Min` — degenerate
-`10` on **all 392 rows**. A system default, not customer data.
+`10` on **all 392 rows**. A system default in this template; stored anyway (rule V8).
 
 ### Q — `Default Estimate Max` — degenerate
-`1000` on **all 392 rows**. A system default, not customer data.
+`1000` on **all 392 rows**. A system default in this template; stored anyway (rule V8).
 
 ### R — `Locked`
 **Empty on all 392 rows, and no control for it exists anywhere in the comment UI.**
@@ -369,6 +371,7 @@ importer assumes it is empty.**
 
 ### U — `Uses` — degenerate
 `0` on **all 392 rows**. Presumably a usage counter, reset or unused on a stock template.
+Stored anyway (rule V8).
 
 ### V–AO — `Default Photo 1..10` and `Default Photo N Caption`
 Twenty columns, interleaved photo then caption. **Every one empty on all 392 rows.**
@@ -398,7 +401,7 @@ load time. On a four-year-tuned template it is **the only signal in the file of 
 the customer has actually touched and when**, which is exactly what a migration reviewer wants to
 know. Model it. Also note it reflects last *save*, not last *content change*: row 12 was
 re-saved with identical content and picked up a new timestamp.
--> Maps to `comment.source_last_modified`.
+→ Maps to `comment.source_last_modified`.
 
 ---
 
@@ -411,6 +414,7 @@ column, and it is not simply "plain text versus HTML".
 | --- | --- | --- | --- |
 | A `Section Name` | `&amp;amp;` | `&amp;` | **decode once more** → `&` |
 | B `Item Name` | `&amp;amp;` | `&amp;` | **decode once more** → `&` |
+| C `Comment Name` | `&amp;amp;` | `&amp;` | **decode once more** → `&` |
 | D `Comment Text` | `&amp;amp;`, `&lt;p&gt;` | `&amp;`, `<p>` | **leave as-is, render as HTML** |
 | G `Multiple Choice Options` | `&amp;` | `&` | **do not decode again** |
 
@@ -470,33 +474,16 @@ The "missing from the export" bucket, evidenced rather than assumed.
   exported intact. The one empty `youtube-embed-wrapper` div in the stock template is an
   artifact of that template, not export loss.
 
-### Finding: item display order is not recoverable
+### Finding: item order follows the editor, but the file cannot prove it
 
-Two independent exports of this template, taken two days apart from different accounts, both
-order `Exterior` items as `… Eaves, Soffits & Fascia, Walkways Patios & Driveways, Vegetation
-Grading Drainage & Retaining Walls`. The Spectora UI displays the last two the other way round.
-
-Section order matches the UI exactly in both files. Item order does not, and both files agree
-with each other, so this is a property of the export rather than drift between accounts.
-
-**Consequence:** first-appearance order reproduces sections faithfully but items only
-approximately. Say so in the import report rather than presenting a reordered template as a
-faithful copy.
+An early export listed two `Exterior` items in the opposite order to a screenshot of Spectora's
+editor. Two later exports matched the editor, including one taken right after a deliberate
+reorder. So the export does follow a persisted item order. There is still no order column above
+the comment level, so the importer cannot verify it from the file alone, and the import report
+calls item order best-effort (rule O1). Details in `docs/format/eda-findings.md` §3.
 
 ---
 
-## Suggested target schema
+## Target schema
 
-```
-template   id, name (from filename), source_file, imported_at
-section    id, template_id, name, position            -- position = first appearance
-item       id, section_id, name, position             -- identity is (section, name)
-comment    id, item_id, name, body_html, type, severity,
-           answer_type, choices[], unit_options[], recommendation,
-           order_in_type, position
-import_issue  id, template_id, kind, column, row, detail
-```
-
-`import_issue.kind` carries the two buckets the assignment asks you to keep apart:
-`MISSING_FROM_EXPORT` for everything in the section above, and `NOT_MODELLED` for columns you
-read but deliberately do not store. Never merge them.
+Maintained in `docs/design/schema.md`.

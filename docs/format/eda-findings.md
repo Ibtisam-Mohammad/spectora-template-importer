@@ -1,9 +1,12 @@
 # EDA findings
 
+> **Evidence log.** This document records what was measured and why. The rules the importer
+> follows are maintained in `docs/rules.md`; where the two disagree, `docs/rules.md` wins.
+
 Exploratory analysis of Spectora HTML-text exports, run by `tools/eda.py` and
 `tools/invariants.py`.
 
-Two files analysed:
+Files analysed:
 
 | File | Rows | Sections | Items | Distinct item names |
 | --- | --- | --- | --- | --- |
@@ -14,8 +17,9 @@ Two files analysed:
 | `probe-duplicate.xls` (committed; probe-html plus two adjacent sections both named `ZZ Dup`) | 423 | 15 by block | 74 by block | 63 |
 | Room-by-Room Residential (second export, generalisation test) | 798 | 22 | 136 | **62** |
 
-Both are 42 columns. The second file exists only to prove the parser rules generalise; it is
-not committed.
+All are 42 columns. The Room-by-Room row is a copy from outside this repo, used only as a
+generalisation check and not committed. Our own Room-by-Room export is sealed, unopened, in
+`fixtures/holdout/`.
 
 ---
 
@@ -41,8 +45,8 @@ Coverage on `probe-html.xls` with the corrected tool and the schema as written:
 | --- | --- |
 | Grid | 403 rows × 42 columns = 16,926 cells |
 | Non-empty | 4,753 |
-| Consumed by the schema | 3,544, **74.6%** of non-empty |
-| Not consumed | 1,209, all in `Default Estimate Min`, `Default Estimate Max`, `Uses` |
+| Consumed by the schema | 4,753, **100%** of non-empty, since every column now has a field |
+| Not consumed | 0 |
 | **Non-empty cells not consumed that vary** | **0** |
 
 One finding is new to this pass and is recorded under column L: a `boolean` comment's
@@ -141,8 +145,9 @@ Measured reuse across sections:
 | Room-by-Room | **13** | 62 distinct names resolving to 136 items |
 
 In the Room-by-Room template, keying items on name alone would collapse **136 items into 62**,
-merging every room's `Doors`, `Windows`, `Floors` and `Walls` into one. Item identity is
-`(Section Name, Item Name)`. This is the single most damaging mistake available.
+merging every room's `Doors`, `Windows`, `Floors` and `Walls` into one. Item identity is the
+contiguous block within its section (rule S3), never the name. This is the single most damaging
+mistake available.
 
 ---
 
@@ -190,7 +195,8 @@ These are safe to validate against, and a violation is worth surfacing rather th
 - 42 columns, header on row 1, single sheet `Sheet1`.
 - Every row has a non-blank `Section Name` and `Item Name`.
 - `Comment Type` is always one of `info`, `limit`, `defect`.
-- `Answer Type` is always within the documented six.
+- `Answer Type` is always one of seven observed values: the six the header documents, plus
+  `signature`.
 - **`Category` is populated if and only if `Comment Type == defect`.** Zero exceptions across
   1,190 rows.
 - **`Multiple Choice Options` is populated if and only if `Answer Type == checkbox`.** Zero
@@ -199,7 +205,8 @@ These are safe to validate against, and a violation is worth surfacing rather th
 Type and answer-type correlate strongly: every `defect` and every `limit` row is `boolean`.
 Only `info` rows vary, carrying `checkbox`, `number`, `text` and one `boolean`.
 
-`date` and `range` never occur in either file but are documented, so accept them.
+`date`, `range` and `signature` appear only in `probe-html.xls`, where they were created
+deliberately.
 
 ---
 
@@ -232,9 +239,9 @@ implementation applies, would corrupt data in this file.
 ## 6. Multiple choice options
 
 - 72 rows carry choices, ranging from 2 to 18 options each.
-- **The format has no escaping mechanism for embedded commas.** A choice value containing a
-  comma is unrecoverable by construction. None were observed in either file, but this is a
-  format limitation to declare rather than a solved problem.
+- **No choice can contain a comma.** Spectora splits the field on every comma as the inspector
+  types it, so splitting on commas is exact. A thousands separator typed into a choice is already
+  broken inside Spectora, and the export carries that damage.
 - Choice values legitimately contain ampersands and quote characters, for example
   `Knob & Tube` and `1 1/2"`.
 - `Multiple Choice Options` is single entity-encoded, unlike the name and body columns. See
@@ -288,21 +295,12 @@ Constant across all 392 rows of the committed file:
 `Default Value` is populated on exactly one row. `Recommendation` on four, as opaque lowercase
 slugs (`pro`, `monitor`). `Unit Type Options` on three.
 
-Surfacing any of these in an editor as though the customer configured them is worse than
-omitting them.
+They are stored anyway, because constant in these templates is not constant in the format
+(rule V8). The editor keeps them in an advanced panel rather than presenting them as the
+customer's own settings.
 
 ---
 
 ## 8. Consequences for the importer
 
-1. Index cells by the `r` attribute. Never by position.
-2. Treat absent `<c>` and valueless `<c>` identically as empty.
-3. Item key is `(section, item)`. Comment key is a surrogate plus row position.
-4. Sort comments by `Order`, tie-break on row position, and declare ordering as best-effort.
-5. Preserve `Comment Text` byte-for-byte after XML decoding. Do not trim, normalise whitespace
-   or re-encode entities.
-6. Validate the six invariants in section 4 and report violations instead of silently
-   coercing.
-7. Accept all six documented `Answer Type` values, not only the four present.
-8. Suppress the constant columns in section 7 from the editor, and record them as
-   deliberately not modelled.
+Maintained as `docs/rules.md`.

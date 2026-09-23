@@ -12,6 +12,7 @@ editable, persistent template library. The brief is in `docs/assignment/`.
 README.md              this file
 NOTES.md               what was cut and why, limitations, how work was checked, time spent
 docs/
+  rules.md             every format rule the importer follows, each checked by tests
   assignment/          the brief
   format/              what a Spectora export actually contains
     spectora-format.md   file mechanics, headers, encoding, traps

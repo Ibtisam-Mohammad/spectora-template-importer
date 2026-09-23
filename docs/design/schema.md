@@ -10,7 +10,7 @@ layers, and the only thing the model owes them is that identity is surrogate and
 shared between templates.
 
 Every decision below is justified by a measurement in `docs/format/eda-findings.md` or a column definition
-in `docs/format/column-map.md`.
+in `docs/format/column-map.md`. The format rules themselves are maintained in `docs/rules.md`.
 
 ## Rule zero: know the format, never the template
 
@@ -61,10 +61,10 @@ The template itself has no row in the export. Its name survives only in the file
 
 **Reframe: ordering is not a fact to recover, it is a value to assign and then own.**
 
-The EDA showed the export does not reliably encode display order. Item order contradicts the
-Spectora UI in both files examined. `Order (w/i item)` is dense in your file and largely
-constant in the other, with 120 of 220 groups carrying duplicate values. File position runs
-forward in one file and reverse in the other.
+The EDA showed the export does not reliably encode display order. There is no order column
+above the comment level, so item order in the file cannot be verified against Spectora's editor.
+`Order (w/i item)` is dense in one template and largely constant in another, with 120 of 220
+groups carrying duplicate values.
 
 So: every node gets an explicit integer `position`, assigned at import from the best available
 signal, and mutable thereafter. Once the inspector reorders anything, `position` is your data,
@@ -72,10 +72,8 @@ not Spectora's, and you would need the column regardless.
 
 **Assignment rules at import:**
 
-- Section `position` — first appearance in the file. Matched the Spectora UI exactly in both
-  files.
-- Item `position` — first appearance in the file. **Known to be approximate.** Record it as an
-  import issue.
+- Section `position` — block order in the file. Matched the Spectora UI in every export.
+- Item `position` — block order in the file. The report states that item order is best-effort.
 - Comment `position` — sort by type group (Informational, Limitations, Deficiencies), then by
   `Order (w/i item)`, then by source row as a stable tie-break.
 
@@ -121,8 +119,8 @@ create table comment (
   name            text not null,
   body_html       text,                -- nullable: 83/392 legitimately empty
   comment_type    text not null,       -- info | limit | defect
-  severity        smallint,            -- -1 | 0 | 1, defect rows only
-  answer_type     text not null,       -- boolean|checkbox|date|number|range|text
+  severity        text,                -- '-1' | '0' | '1' verbatim, defect rows only
+  answer_type     text not null,       -- boolean|checkbox|date|number|range|signature|text
   choices         text[] not null default '{}',
   unit_options    text[] not null default '{}',
   recommendation  text,                -- opaque slug, e.g. 'pro', 'monitor'
@@ -138,8 +136,10 @@ create table comment (
   uses            text,
   source_last_modified text,           -- MM/DD/YYYY HH:MM:SS, as exported
   position        integer not null,
-  source_row      integer,             -- row in the spreadsheet
-  source_order    integer              -- raw Order (w/i item), kept verbatim
+  source_order    text,                -- raw Order (w/i item), kept verbatim
+  body_edited_at  timestamptz,         -- set when the body is edited; TinyMCE rewrites HTML
+  import_run_id   uuid references import_run(id) on delete set null,
+  source_row_number integer            -- with import_run_id, points at the source row
 );
 
 create table comment_photo (
@@ -185,8 +185,8 @@ What a real template plausibly contains that the fixture does not:
 - **Populated photo columns**, all twenty of which are empty here.
 - **`Locked`, `Simple Format`, `Disable Photos`** actually set, all empty here.
 - **`Default Location`** in use, tied to Spectora's account-level Location Tags.
-- **`date` and `range` answer types**, documented but absent from both files.
-- **Recommendation slugs** beyond the two observed.
+- **Answer types and recommendation slugs** beyond those observed; `signature` was already
+  missing from the header's own list.
 - **Scale**: a mature library runs one to two thousand narratives against this file's 392.
 - Possibly non-English content, and item names longer than the 62-character maximum here.
 
@@ -237,7 +237,21 @@ create table import_issue (
   severity       text not null,     -- info | warning | error
   column_letter  text,
   row_number     integer,
-  detail         text not null
+  detail         text not null,
+  section_id     uuid references section(id) on delete cascade,
+  item_id        uuid references item(id) on delete cascade,
+  comment_id     uuid references comment(id) on delete cascade
+);
+
+-- one row per column per import: where each column's cells went
+create table cell_ledger (
+  import_run_id  uuid not null references import_run(id) on delete cascade,
+  column_letter  text not null,
+  header         text,
+  outcome        text not null,     -- consumed | empty | constant | unrecognised
+  cell_count     integer not null,
+  target_field   text,
+  primary key (import_run_id, column_letter)
 );
 ```
 
@@ -251,12 +265,20 @@ merged:
 
 | Kind | Meaning |
 | --- | --- |
-| `MISSING_FROM_EXPORT` | Spectora never put it in the file. Template settings, section icons, item order, photo binaries. |
-| `NOT_MODELLED` | Present in the file, deliberately not stored. Name the column. |
-| `UNEXPECTED_VALUE` | Outside a documented enum, or an invariant violated. |
-| `AMBIGUOUS_ORDER` | Duplicate or constant `Order` values in a type group. |
-| `DUPLICATE_NAME` | Two comments sharing a name inside one item. |
-| `ROW_SKIPPED` | Only for genuinely unusable rows, with the reason. |
+| `MISSING_HEADER` | A known header is absent. Refused only for Section Name or Item Name. |
+| `UNKNOWN_HEADER` | A header outside the known 42. Its values stay in the source row. |
+| `ROW_SKIPPED` | A row with no Section Name or Item Name, with its row number. |
+| `UNEXPECTED_VALUE` | A Comment Type or Answer Type outside the known values. Imported anyway. |
+| `INVARIANT_VIOLATED` | Category without a deficiency, or choices without `checkbox`, or the reverse. |
+| `MERGED_SECTIONS_SUSPECTED` | An item name recurs as a separate block inside one section. |
+| `AMBIGUOUS_ORDER` | Duplicate Order values inside one comment-type group. |
+| `PHOTO_FETCH_FAILED` | A photo could not be copied; its URL is kept. |
+| `PLAIN_TEXT_EXPORT` | The file is Spectora's Plain Text export; links and formatting were already lost. |
+| `RENDER_NEUTRALISED` | Markup that the render policy will not display, such as an iframe from another host. |
+
+What is missing from Spectora's export, and what this importer does not support, are fixed
+properties of the format and of this code, so they are shown on every report rather than stored
+per import.
 
 ---
 
@@ -274,8 +296,8 @@ wrong and no amount of feature work makes copy independent.
 `copied_from_id` set for lineage. No shared rows, no copy-on-write. Independence then holds by
 construction rather than by discipline, and it is provable on camera in fifteen seconds.
 
-A copy does not inherit `source_row` or an `import_run`; it inherits `position` only. Row
-numbers belong to an import, not to a template.
+A copy keeps each comment's link to the source row it was imported from, so a copy can also be
+reverted to imported values. It gets no import run of its own.
 
 **Editable at baseline:** section name, item name, comment name, comment body. **Worth adding:**
 reordering, since ordering is something the import explicitly could not guarantee and the

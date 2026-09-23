@@ -1,5 +1,8 @@
 # Preservation and provenance
 
+> **Evidence log.** This document records what was measured and why. The rules the importer
+> follows are maintained in `docs/rules.md`; where the two disagree, `docs/rules.md` wins.
+
 The brief's hardest requirements are all one requirement wearing three hats:
 
 - "Preserve the template's text, hierarchy, and ordering."
@@ -22,15 +25,14 @@ A single "we imported it" figure hides the interesting part. Measured on the com
 | **Model coverage** | **100%** | All 4,753 non-empty cells of `probe-html.xls` land in a typed field, because every one of the 42 columns has one. |
 | **Varying-data coverage** | **100%** | Follows from the above. Kept as its own line because it is the number that matters if a column is ever deliberately dropped. |
 
-The third number An earlier version of this table left three columns unstored because they held the same value
+An earlier version of this table left three columns unstored because they held the same value
 on every row: `Default Estimate Min` = 10, `Default Estimate Max` = 1000, `Uses` = 0. That
-reasoned from the templates we had seen to the format as a whole. Rule zero in
-`docs/design/schema.md` forbids exactly that, so they are now stored like everything else. They
-still register as *constant* in the cell ledger, which is useful information for the import
-report; it just no longer decides what is kept.
+reasoned from the templates we had seen to the format as a whole, which rule zero forbids, so
+they are now stored like everything else. They still register as *constant* in the cell ledger,
+which is useful in the import report; it no longer decides what is kept.
 
- numbers, and saying which one you think matters, is a far stronger answer than
-"nothing was dropped."
+Quoting the three numbers, and saying which one matters, is a far stronger answer than "nothing
+was dropped."
 
 ---
 
@@ -128,7 +130,7 @@ What the editor actually emits, and how the policy handles it:
 | Colour | `<span style="color: rgb(213, 54, 54)">` | allow `color`; **accept `rgb()`**, a hex-only sanitiser strips it |
 | Lists | `<ol>`, `<ul>`, `<li>`; empty item is `<li><br></li>` | as-is |
 | Links | `<a href rel="noopener noreferrer" target="_blank">` | allow; `href` must be `http`, `https`, `mailto`; add `rel` if absent. Note the 43 legacy links in the export have `target` on 39 and `rel` on none |
-| Video | `<span class="fr-video" style="display:block; clear:both; text-align:center"><iframe width height src frameborder allowfullscreen>` | allow `iframe` when `src` host is `youtube.com`, `youtube-nocookie.com`, `player.vimeo.com`; otherwise replace with a visible link. Allow `display`, `clear`, `frameborder`, `allowfullscreen`, `width`, `height` |
+| Video | `<span class="fr-video" style="display:block; clear:both; text-align:center"><iframe width height src frameborder allowfullscreen>` | allow `iframe` when `src` host is `youtube.com`, `youtube-nocookie.com`, `player.vimeo.com`; otherwise the `src` is removed and the iframe is counted as neutralised. Allow `display`, `clear`, `frameborder`, `allowfullscreen`, `width`, `height` |
 | Tables | `<table class style="width:100%"><thead><th colspan><tbody><td colspan rowspan style>` | allow `colspan`, `rowspan`, `width`, `background-color`, `text-align`, `vertical-align` |
 | Empty cell | `<td><br></td>` | as-is |
 | Editor state | `contenteditable="false"`, `draggable="true"`, `fr-original-style=""` | **strip**; harmless but they are editor chrome, not content. Note Froala also injects `style="color: rgb(53, 119, 168)"` on links at save time |
@@ -157,8 +159,8 @@ Full allowlist after correction:
 | Lists, tables | `ul`, `ol`, `li`, `table`, `thead`, `tbody`, `tfoot`, `tr`, `th`, `td`, `caption` |
 | Media | `a`, `img`, `iframe` (host-restricted) |
 | Attributes | `href`, `target`, `rel`, `src`, `alt`, `title`, `width`, `height`, `colspan`, `rowspan`, `frameborder`, `allowfullscreen`, `class`, `style` |
-| CSS properties | `color`, `background-color`, `font-size`, `font-weight`, `font-style`, `font-family`, `line-height`, `text-align`, `text-decoration`, `vertical-align`, `width`, `max-width`, `height`, `display`, `clear`, `overflow`, `padding*`, `margin*`, `border*`, `position: relative` only |
-| **Denied** | `script`, `object`, `embed`, `form`, `input`, `button`, `link`, `meta`, `base`, `svg`, `math`; `on*` handlers; `javascript:` and `data:` URLs except `data:image/*` on `img`; `srcdoc`; `contenteditable`, `draggable`; CSS `expression()`, `url()`, `behavior`, `position: absolute/fixed`, `z-index` |
+| CSS properties | exact names, because nh3 matches property names and never values: `color`, `background-color`, `font-size`, `font-weight`, `font-style`, `font-family`, `line-height`, `text-align`, `text-decoration`, `vertical-align`, `width`, `max-width`, `height`, `display`, `clear`, `overflow`, and every `padding`, `margin` and `border` shorthand and longhand except `border-image` |
+| **Denied** | `script`, `object`, `embed`, `form`, `input`, `button`, `link`, `meta`, `base`, `svg`, `math`; `on*` handlers; `javascript:` and `data:` URLs except `data:image/*` on `img`; `srcdoc`; `contenteditable`, `draggable`; any CSS property not listed above, including `position`, `z-index`, `behavior`, `background` and `border-image` |
 
 **Tested mechanically against the fixture:** zero tags, zero attributes and zero CSS properties
 outside the allowlist, after stripping the two editor-state attributes.
@@ -219,14 +221,16 @@ denylisted 0 | empty video wrappers 1
 Second export: `p 445 | a 81 | div 7`, attributes `href 81 | target 65 | class 7 | style 7`,
 denylisted 0, empty video wrappers 7.
 
-**Implementation note.** Do not write the sanitiser. DOMPurify on the client, or an equivalent
-server-side library, is the correct tool, configured with the allowlist above. A hand-rolled
-regex sanitiser is the single most common way this goes wrong.
+**Implementation note.** Do not write the sanitiser. nh3, the Python binding to the Rust
+`ammonia` sanitiser, runs server-side at render time with the allowlist above. A hand-rolled
+regex sanitiser is the single most common way this goes wrong. Two nh3 details matter: an
+exception inside its `attribute_filter` callback keeps the original value, so the callback must
+catch everything and return nothing; and combining a generic `class` attribute with
+`allowed_classes` panics, so only the generic form is used.
 
-**One real limitation to state rather than solve:** `Multiple Choice Options` is comma-separated
-with no escaping, so a choice value containing a comma is unrecoverable by construction. None
-occur in either file. That is a property of Spectora's format, not of this importer, and it
-belongs in the `MISSING_FROM_EXPORT` bucket.
+**Commas in choices are not an export limitation.** Spectora splits Answer Choices on every
+comma as the inspector types, so no choice can contain one and splitting is exact. See
+`docs/format/column-map.md`, column G.
 
 ---
 
@@ -247,8 +251,8 @@ SPECTORA_PLAIN_TEXT  headers match; no tag in any Comment Text; no &amp; in Comm
                         before you downloaded it, and stripped tag-like text from
                         names. Re-export with Export HTML Text." Parsing is
                         unchanged; the warning is the only difference.
-SPREADSHEET_UNKNOWN  readable spreadsheet, headers do not match
-                     -> refuse, list which of the 4 required headers were found
+SPREADSHEET_UNKNOWN  readable spreadsheet without Section Name and Item Name headers
+                     -> refuse, list the missing and unknown headers by name
 NOT_A_SPREADSHEET    magic bytes are not a zip / not OOXML
                      -> refuse, say what was detected
 ```
@@ -292,7 +296,7 @@ The import report is one screen, and it is the chosen improvement made concrete:
 Two of those deserve to be prominent because they are true and nobody else will say them:
 
 > Item display order is best-effort. Spectora's export carries no ordering column above the
-> comment level, and two independent exports disagree with Spectora's own editor.
+> comment level, so the order shown is the order of the file.
 
-> Three columns were not imported because they hold the same value on all 392 rows. They are
-> Spectora system defaults, not your configuration.
+> Sections and items that held no comments, and every section's icon, Standards of Practice and
+> reminders, are not in Spectora's export. Re-enter them if you used them.
