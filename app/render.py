@@ -67,6 +67,10 @@ VIDEO_HOSTS = {
     "www.youtube-nocookie.com",
     "player.vimeo.com",
 }
+# Attributes Froala writes to track its own editing state. They carry no formatting, so
+# removing them is not a loss worth reporting.
+EDITOR_STATE_ATTRIBUTES = frozenset({"contenteditable", "draggable", "fr-original-style"})
+
 _IMAGE_DATA_PREFIXES = tuple(
     f"data:image/{kind};" for kind in ("png", "jpeg", "jpg", "gif", "webp")
 )
@@ -144,3 +148,16 @@ def neutralised(stored_html: str) -> Counter[str]:
     Derived from nh3's actual output, so it cannot disagree with the policy above.
     """
     return markup_inventory(stored_html) - markup_inventory(render_comment_html(stored_html))
+
+
+def neutralised_content(stored_html: str) -> Counter[str]:
+    """What rendering removes, leaving out Froala's editing-state attributes."""
+    return Counter(
+        {
+            entry: count
+            for entry, count in neutralised(stored_html).items()
+            if not (
+                entry.startswith("attribute ") and entry.split(" ")[1] in EDITOR_STATE_ATTRIBUTES
+            )
+        }
+    )

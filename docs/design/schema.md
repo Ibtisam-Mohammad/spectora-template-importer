@@ -89,68 +89,73 @@ format.
 
 ```sql
 create table template (
-  id                    uuid primary key default gen_random_uuid(),
-  name                  text not null,              -- from filename, editable
-  source_filename       text,
-  source_sha256         text,                       -- exact bytes imported
-  origin                text not null,              -- 'spectora_xlsx' | 'copy'
-  copied_from_id        uuid references template(id) on delete set null,
-  created_at            timestamptz not null default now(),
-  updated_at            timestamptz not null default now()
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,              -- from the file name, editable
+  origin          text not null,              -- 'import' | 'copy'
+  copied_from_id  uuid references template(id) on delete set null,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
 );
 
 create table section (
-  id           uuid primary key default gen_random_uuid(),
-  template_id  uuid not null references template(id) on delete cascade,
-  name         text not null,
-  position     integer not null
+  id                uuid primary key default gen_random_uuid(),
+  template_id       uuid not null references template(id) on delete cascade,
+  name              text not null,
+  position          integer not null,
+  source_first_row  integer                   -- the block's first row in the file
 );
 
 create table item (
-  id          uuid primary key default gen_random_uuid(),
-  section_id  uuid not null references section(id) on delete cascade,
-  name        text not null,
-  position    integer not null
+  id                uuid primary key default gen_random_uuid(),
+  section_id        uuid not null references section(id) on delete cascade,
+  name              text not null,
+  position          integer not null,
+  source_first_row  integer
 );
 
 create table comment (
-  id              uuid primary key default gen_random_uuid(),
-  item_id         uuid not null references item(id) on delete cascade,
-  name            text not null,
-  body_html       text,                -- nullable: 83/392 legitimately empty
-  comment_type    text not null,       -- info | limit | defect
-  severity        text,                -- '-1' | '0' | '1' verbatim, defect rows only
-  answer_type     text not null,       -- boolean|checkbox|date|number|range|signature|text
-  choices         text[] not null default '{}',
-  unit_options    text[] not null default '{}',
-  recommendation  text,                -- opaque slug, e.g. 'pro', 'monitor'
-  default_value   text,                -- never coerced: 'true' and 'f' both occur
-  default_value_2 text,
-  default_unit_type text,
-  default_location  text,              -- verbatim, including the leading space
-  estimate_min    text,
-  estimate_max    text,
-  locked          text,
-  simple_format   text,
-  disable_photos  text,
-  uses            text,
-  source_last_modified text,           -- MM/DD/YYYY HH:MM:SS, as exported
-  position        integer not null,
-  source_order    text,                -- raw Order (w/i item), kept verbatim
-  body_edited_at  timestamptz,         -- set when the body is edited; TinyMCE rewrites HTML
-  import_run_id   uuid references import_run(id) on delete set null,
-  source_row_number integer            -- with import_run_id, points at the source row
+  id                    uuid primary key default gen_random_uuid(),
+  item_id               uuid not null references item(id) on delete cascade,
+  position              integer not null,
+  name                  text not null,
+  body_html             text not null default '',   -- 83/392 legitimately empty
+  comment_type          text not null default '',   -- info | limit | defect, verbatim
+  category              text not null default '',   -- '-1' | '0' | '1' verbatim, defects only
+  choices               text[] not null default '{}',
+  unit_options          text[] not null default '{}',
+  recommendation        text not null default '',   -- opaque slug, e.g. 'pro', 'monitor'
+  source_order          text not null default '',   -- raw Order (w/i item)
+  answer_type           text not null default '',   -- boolean|checkbox|date|number|range|signature|text
+  default_value         text not null default '',   -- never coerced: 'true' and 'f' both occur
+  default_value_2       text not null default '',
+  default_unit_type     text not null default '',
+  default_location      text not null default '',   -- verbatim, including the leading space
+  estimate_min          text not null default '',
+  estimate_max          text not null default '',
+  locked                text not null default '',
+  simple_format         text not null default '',
+  disable_photos        text not null default '',
+  uses                  text not null default '',
+  source_last_modified  text not null default '',   -- MM/DD/YYYY HH:MM:SS, as exported
+  body_edited_at        timestamptz,                -- set when the body is edited; TinyMCE rewrites HTML
+  import_run_id         uuid references import_run(id) on delete set null,
+  source_row_number     integer                     -- with import_run_id, points at the source row
 );
 
 create table comment_photo (
   id           uuid primary key default gen_random_uuid(),
   comment_id   uuid not null references comment(id) on delete cascade,
-  position     integer not null,       -- 1..10, as exported (Spectora writes newest first)
-  source_url   text not null,          -- cdn.spectora.com; dies with the Spectora account
-  caption      text,
-  stored_path  text                    -- our copy of the bytes; null if the fetch failed
+  position     integer not null,          -- 1..10, the export's slot (Spectora writes newest first)
+  source_url   text not null default '',  -- cdn.spectora.com; dies with the Spectora account
+  caption      text not null default '',
+  stored_path  text                       -- our copy of the bytes; null if it was not copied
 );
 ```
+
+`supabase/migrations/0001_init.sql` is the authoritative version of every table here.
+
+Text columns from the export default to `''` rather than allowing null. At the value level an
+empty cell and a missing cell mean the same thing; the source row keeps the difference.
 
 **Every one of the 42 columns has a field.** Some have never held anything but a default or
 nothing at all in the exports we have. That is a fact about those templates, not about the
@@ -206,54 +211,69 @@ The brief grades "how you checked preservation", so preservation has to be check
 a schema decision rather than a test-suite decision.
 
 ```sql
+-- One upload. It exists only if verification passed, because a failed verification rolls
+-- the whole import back. It outlives its template while a copy still points at its rows.
 create table import_run (
-  id               uuid primary key default gen_random_uuid(),
-  template_id      uuid not null references template(id) on delete cascade,
-  source_filename  text not null,
-  source_sha256    text not null,
-  source_variant   text not null,     -- 'html' | 'plain' | 'unknown'; drives a warning only, never parsing
-  parser_version   text not null,
-  rows_total       integer not null,
-  rows_imported    integer not null,
-  sections_created integer not null,
-  items_created    integer not null,
-  comments_created integer not null,
-  started_at       timestamptz not null default now(),
-  finished_at      timestamptz
+  id                uuid primary key default gen_random_uuid(),
+  template_id       uuid references template(id) on delete set null,
+  source_filename   text not null,
+  source_sha256     text not null,       -- exact bytes imported
+  verdict           text not null,       -- SPECTORA_HTML | SPECTORA_PLAIN; a warning, never parsing
+  parser_version    text not null,
+  rows_total        integer not null,
+  empty_rows        integer not null,
+  rows_skipped      integer not null,
+  sections_created  integer not null,
+  items_created     integer not null,
+  comments_created  integer not null,
+  photos_found      integer not null,
+  photos_stored     integer not null,
+  started_at        timestamptz not null,
+  verified_at       timestamptz          -- set inside the import transaction, after verification
 );
 
--- every row of the source, verbatim, all 42 columns
+-- every row of the source, header included as row 1, verbatim
 create table source_row (
   import_run_id uuid not null references import_run(id) on delete cascade,
   row_number    integer not null,
-  raw           jsonb not null,
+  raw           jsonb not null,          -- column letter -> text; null = cell with no value
   primary key (import_run_id, row_number)
 );
 
+-- the record of the import: deleting a node unlinks its issues and keeps them
 create table import_issue (
   id             uuid primary key default gen_random_uuid(),
   import_run_id  uuid not null references import_run(id) on delete cascade,
+  position       integer not null,
   kind           text not null,
   severity       text not null,     -- info | warning | error
-  column_letter  text,
+  scope          text not null,     -- file | section | item | comment
   row_number     integer,
+  column_letter  text,
   detail         text not null,
-  section_id     uuid references section(id) on delete cascade,
-  item_id        uuid references item(id) on delete cascade,
-  comment_id     uuid references comment(id) on delete cascade
+  section_id     uuid references section(id) on delete set null,
+  item_id        uuid references item(id) on delete set null,
+  comment_id     uuid references comment(id) on delete set null
 );
 
 -- one row per column per import: where each column's cells went
 create table cell_ledger (
   import_run_id  uuid not null references import_run(id) on delete cascade,
   column_letter  text not null,
-  header         text,
+  header         text not null,
   outcome        text not null,     -- consumed | empty | constant | unrecognised
   cell_count     integer not null,
   target_field   text,
   primary key (import_run_id, column_letter)
 );
 ```
+
+An issue about a comment is linked to the comment, its item and its section, so the editor can
+badge every level without walking the tree.
+
+Row-level security is enabled on every table, with no policies. The app connects as the tables'
+owner, which row-level security does not restrict; Supabase's public Data API, which it does
+restrict, gets nothing.
 
 **Keeping `source_row` is the single highest-value table here.** It means nothing is ever truly
 dropped, an unmodelled column is still retrievable, and preservation can be *demonstrated* by
@@ -266,9 +286,10 @@ merged:
 | Kind | Meaning |
 | --- | --- |
 | `MISSING_HEADER` | A known header is absent. Refused only for Section Name or Item Name. |
-| `UNKNOWN_HEADER` | A header outside the known 42. Its values stay in the source row. |
+| `MULTIPLE_SHEETS` | The workbook has more than one sheet; only the first was read. |
+| `UNKNOWN_HEADER` | A header outside the known 42, or a repeat of one. Its values stay in the source row. |
 | `ROW_SKIPPED` | A row with no Section Name or Item Name, with its row number. |
-| `UNEXPECTED_VALUE` | A Comment Type or Answer Type outside the known values. Imported anyway. |
+| `UNEXPECTED_VALUE` | A Comment Type, Answer Type or Category outside the known values. Imported anyway. |
 | `INVARIANT_VIOLATED` | Category without a deficiency, or choices without `checkbox`, or the reverse. |
 | `MERGED_SECTIONS_SUSPECTED` | An item name recurs as a separate block inside one section. |
 | `AMBIGUOUS_ORDER` | Duplicate Order values inside one comment-type group. |

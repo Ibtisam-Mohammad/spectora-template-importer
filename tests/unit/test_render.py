@@ -3,11 +3,17 @@ from pathlib import Path
 
 import pytest
 
-from app.render import markup_inventory, neutralised, render_comment_html
+from app.render import (
+    EDITOR_STATE_ATTRIBUTES,
+    markup_inventory,
+    neutralised,
+    neutralised_content,
+    render_comment_html,
+)
 from tests.helpers import analysed
 from tests.paths import KITCHEN_SINK, PRIMARY, PROBE_HTML, RICH_COMMENT, ROOT
 
-EDITOR_STATE = {"contenteditable", "draggable", "fr-original-style"}
+EDITOR_STATE = EDITOR_STATE_ATTRIBUTES
 
 
 def kitchen_sink() -> str:
@@ -188,3 +194,9 @@ def test_inventory_counts_tags_attributes_styles_and_iframe_hosts():
     assert inventory["style color"] == 1
     assert inventory["style font-size"] == 1
     assert inventory["iframe from player.vimeo.com"] == 1
+
+
+def test_editor_state_is_not_reported_as_a_loss():
+    html = '<p contenteditable="true" style="position: absolute">x</p>'
+    assert set(neutralised(html)) == {"attribute contenteditable on <p>", "style position"}
+    assert set(neutralised_content(html)) == {"style position"}
