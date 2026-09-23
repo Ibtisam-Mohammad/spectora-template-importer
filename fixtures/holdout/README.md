@@ -70,3 +70,14 @@ parser reproduces those numbers from our own export.
   and listed in the report.
 - TREC's one YouTube frame is styled `position: absolute` without a positioned container. The
   display drops `position`, and the frame shows at its own size. Nothing to fix.
+
+**Fixed afterwards, as general rules** (next commit after the run):
+
+- New rule PH3: an image inside comment text that Spectora hosts raises
+  `INLINE_IMAGE_NOT_COPIED` on its comment. The stored text is not rewritten. Gromicko now
+  shows 13 such notes.
+- `float` joined the display policy's CSS properties, and a rendered comment contains its
+  floats. Gromicko's floated images now wrap text as they did in Spectora; the only markup
+  still held back there is the website-builder attributes.
+
+After the fixes, `pytest --holdout` passes on all four files, and so does every other test.

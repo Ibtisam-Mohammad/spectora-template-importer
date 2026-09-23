@@ -1,6 +1,7 @@
 """Copy Spectora's default photos into our storage, so they outlive the Spectora account.
 
-Rule PH2. The URLs come from an uploaded file, so every fetch is a request the uploader chose.
+Rules PH2 and PH3. The URLs come from an uploaded file, so every fetch is a request the
+uploader chose.
 Only https URLs on Spectora's CDN are fetched, redirects are never followed, and each fetch is
 capped in size and time, with one budget for the whole import.
 
@@ -18,6 +19,7 @@ from urllib.parse import quote, urlsplit
 import httpx
 
 from app.config import MEGABYTE, Settings
+from app.render import image_sources
 from app.spectora.model import ColumnMap, Issue, IssueKind, ParsedTemplate, Scope, Severity
 
 PHOTO_HOST = "cdn.spectora.com"
@@ -181,6 +183,39 @@ def public_url(settings: Settings, stored_path: str) -> str | None:
         return None
     base = settings.supabase_url.rstrip("/")
     return f"{base}/storage/v1/object/public/{quote(settings.photo_bucket)}/{quote(stored_path)}"
+
+
+def is_spectora_hosted(url: str) -> bool:
+    try:
+        return urlsplit(url).hostname == PHOTO_HOST
+    except ValueError:
+        return False
+
+
+def inline_image_issues(template: ParsedTemplate, columns: ColumnMap) -> list[Issue]:
+    """Images inside comment text that Spectora hosts (rule PH3). Only Default Photos are copied,
+    because copying these would mean rewriting the stored text, which the importer never does."""
+    issues = []
+    for comment in template.comments():
+        hosted = [url for url in image_sources(comment.body_html) if is_spectora_hosted(url)]
+        if hosted:
+            many = len(hosted) > 1
+            what = f"{len(hosted)} images" if many else "an image"
+            fate = (
+                "They were not copied, so they stop" if many else "It was not copied, so it stops"
+            )
+            issues.append(
+                Issue(
+                    IssueKind.INLINE_IMAGE_NOT_COPIED,
+                    Severity.WARNING,
+                    f"'{comment.name}' shows {what} inside its text from Spectora's servers. "
+                    f"{fate} working if the Spectora account closes.",
+                    Scope.COMMENT,
+                    comment.row,
+                    columns.letter("comment_text"),
+                )
+            )
+    return issues
 
 
 def photo_urls(template: ParsedTemplate) -> list[str]:

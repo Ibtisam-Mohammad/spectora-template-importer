@@ -193,7 +193,8 @@ code { font-size: 0.95em; }
 .badge { color: var(--muted); border: 1px solid var(--line); }
 .badge-note { color: #8a5a00; border-color: #f0d28a; background: var(--note-soft); }
 
-.comment-body { line-height: 1.55; overflow-x: auto; }
+/* flow-root keeps floated images inside the comment's box. */
+.comment-body { display: flow-root; line-height: 1.55; overflow-x: auto; }
 .comment-body > :first-child { margin-top: 0; }
 
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 16px 0 0; }

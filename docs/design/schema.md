@@ -295,6 +295,7 @@ merged:
 | `MERGED_SECTIONS_SUSPECTED` | An item name recurs as a separate block inside one section. |
 | `AMBIGUOUS_ORDER` | Duplicate Order values inside one comment-type group. |
 | `PHOTO_FETCH_FAILED` | A photo could not be copied; its URL is kept. |
+| `INLINE_IMAGE_NOT_COPIED` | An image inside the comment text is hosted by Spectora and was not copied. |
 | `PLAIN_TEXT_EXPORT` | The file is Spectora's Plain Text export; links and formatting were already lost. |
 | `RENDER_NEUTRALISED` | Markup that the render policy will not display, such as an iframe from another host. |
 

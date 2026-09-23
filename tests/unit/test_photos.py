@@ -8,11 +8,12 @@ from app.services.photos import (
     PhotoCopier,
     PhotoCopy,
     SupabaseStorage,
+    inline_image_issues,
     is_fetchable,
     photo_issues,
 )
 from app.spectora.model import IssueKind, Scope
-from tests.helpers import analysed
+from tests.helpers import analyse_rows, analysed
 from tests.paths import PRIMARY, PROBE_HTML
 
 PHOTO = "https://cdn.spectora.com/default_photos/images/1/original/a.jpg?1"
@@ -143,3 +144,37 @@ def test_unconfigured_storage_is_one_warning_and_no_photos_means_none():
     assert issue.scope is Scope.FILE
     primary = analysed(PRIMARY)
     assert photo_issues(primary.template, primary.columns, None) == []
+
+
+@pytest.mark.rule("PH3", "R6")
+def test_images_in_comment_text_hosted_by_spectora_are_reported():
+    analysis = analyse_rows(
+        {
+            "section_name": "S",
+            "item_name": "I",
+            "comment_name": "Two hosted",
+            "comment_text": '<p><img src="https://cdn.spectora.com/editor_assets/a.png">'
+            '<img src="https://cdn.spectora.com/editor_assets/b.png"></p>',
+        },
+        {
+            "section_name": "S",
+            "item_name": "I",
+            "comment_name": "Elsewhere",
+            "comment_text": '<img src="https://example.com/c.png">',
+        },
+    )
+    [issue] = inline_image_issues(analysis.template, analysis.columns)
+    assert issue.kind is IssueKind.INLINE_IMAGE_NOT_COPIED
+    assert issue.scope is Scope.COMMENT
+    assert (issue.row, issue.column) == (2, analysis.columns.letter("comment_text"))
+    assert "'Two hosted' shows 2 images" in issue.detail
+
+
+@pytest.mark.rule("PH3")
+def test_the_text_itself_is_left_as_imported():
+    body = '<p><img src="https://cdn.spectora.com/editor_assets/a.png"></p>'
+    analysis = analyse_rows(
+        {"section_name": "S", "item_name": "I", "comment_name": "C", "comment_text": body}
+    )
+    inline_image_issues(analysis.template, analysis.columns)
+    assert analysis.template.comments()[0].body_html == body

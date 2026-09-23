@@ -54,6 +54,7 @@ STYLE_PROPERTIES = {
     "display",
     "clear",
     "overflow",
+    "float",
     *(f"padding{side}" for side in _BOX_SIDES),
     *(f"margin{side}" for side in _BOX_SIDES),
     *(f"border{side}{part}" for side in _BOX_SIDES for part in _BORDER_PARTS),
@@ -132,6 +133,27 @@ class _Inventory(HTMLParser):
 
     def handle_comment(self, data: str) -> None:
         self.counts["html comment"] += 1
+
+
+class _ImageSources(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.sources: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "img":
+            self.sources.extend(value for name, value in attrs if name == "src" and value)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.handle_starttag(tag, attrs)
+
+
+def image_sources(html: str) -> list[str]:
+    """The src of every <img> in some HTML, in document order."""
+    parser = _ImageSources()
+    parser.feed(html)
+    parser.close()
+    return parser.sources
 
 
 def markup_inventory(html: str) -> Counter[str]:

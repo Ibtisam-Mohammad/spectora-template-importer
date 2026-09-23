@@ -47,6 +47,7 @@ ISSUE_LABELS = {
     IssueKind.INVARIANT_VIOLATED: "Unusual combinations of values",
     IssueKind.MERGED_SECTIONS_SUSPECTED: "Sections that may have been merged",
     IssueKind.PHOTO_FETCH_FAILED: "Photos not copied",
+    IssueKind.INLINE_IMAGE_NOT_COPIED: "Images in comment text not copied",
     IssueKind.RENDER_NEUTRALISED: "Markup kept but not displayed",
     IssueKind.AMBIGUOUS_ORDER: "Comments sharing an order number",
 }
@@ -77,6 +78,8 @@ NOT_SUPPORTED_HERE = (
     "Restoring what Spectora's Plain Text export removed. It is imported with a warning; "
     "export HTML Text instead.",
     "Sheets after the first one in a workbook.",
+    "Copying images placed inside comment text. Only Default Photos are copied; an image in "
+    "the text is shown from where it is hosted, and flagged when Spectora hosts it.",
     "Displaying scripts, event handlers, forms, embedded frames from anywhere but YouTube "
     "or Vimeo, and CSS such as position. They are kept in the stored text, not shown.",
     "Splitting a section that Spectora merged. The report points to it so you can check.",

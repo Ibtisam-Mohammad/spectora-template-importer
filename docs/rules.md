@@ -110,6 +110,8 @@ Each rule gives its evidence and the module that implements it.
   Evidence: `docs/format/column-map.md`, columns V–AO. Module: `app/spectora/parse.py`.
 - **PH2** Fetch each photo into storage at import: only over `https` from `cdn.spectora.com`, following no redirects, with size and time caps. A failure raises `PHOTO_FETCH_FAILED` and the URL is kept.
   Evidence: `docs/design/preservation.md` §4; the URL stops working when the customer leaves Spectora, and it comes from an uploaded file. Module: `app/services/photos.py`.
+- **PH3** An image inside Comment Text that Spectora hosts raises `INLINE_IMAGE_NOT_COPIED` on its comment. It is not copied, because that would mean rewriting the stored text; it is shown from where it is hosted.
+  Evidence: the holdout run, `fixtures/holdout/README.md`; one template's text holds 13 images on `cdn.spectora.com/editor_assets`. Module: `app/services/photos.py`.
 
 ## HTML
 

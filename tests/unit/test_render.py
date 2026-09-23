@@ -5,6 +5,7 @@ import pytest
 
 from app.render import (
     EDITOR_STATE_ATTRIBUTES,
+    image_sources,
     markup_inventory,
     neutralised,
     neutralised_content,
@@ -200,3 +201,15 @@ def test_editor_state_is_not_reported_as_a_loss():
     html = '<p contenteditable="true" style="position: absolute">x</p>'
     assert set(neutralised(html)) == {"attribute contenteditable on <p>", "style position"}
     assert set(neutralised_content(html)) == {"style position"}
+
+
+@pytest.mark.rule("H2")
+def test_images_floated_by_spectoras_editor_keep_their_float():
+    html = '<p><img src="https://cdn.spectora.com/a.png" style="width: 200px; float: left;"></p>'
+    assert "float:left" in render_comment_html(html).replace(" ", "")
+    assert not neutralised(html)
+
+
+def test_image_sources_are_listed_in_order():
+    html = '<p><img src="https://a.test/1.png"><img alt="no source"></p><img src="/2.png"/>'
+    assert image_sources(html) == ["https://a.test/1.png", "/2.png"]

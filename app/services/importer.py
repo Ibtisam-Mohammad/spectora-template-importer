@@ -29,7 +29,7 @@ from app.db.imports import (
 from app.db.records import StoredTemplate
 from app.db.templates import read_tree
 from app.render import neutralised_content
-from app.services.photos import PhotoCopier, photo_issues, photo_urls
+from app.services.photos import PhotoCopier, inline_image_issues, photo_issues, photo_urls
 from app.spectora.analysis import Analysis, analyse
 from app.spectora.model import (
     ColumnMap,
@@ -66,6 +66,7 @@ def import_file(
         *analysis.issues,
         *render_issues(template, columns),
         *photo_issues(template, columns, copies),
+        *inline_image_issues(template, columns),
     )
     new = NewImport(
         analysis=analysis,

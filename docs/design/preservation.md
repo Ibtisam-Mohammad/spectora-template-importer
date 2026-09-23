@@ -161,7 +161,7 @@ output:
 | Lists, tables | `ul`, `ol`, `li`, `table`, `thead`, `tbody`, `tfoot`, `tr`, `th`, `td`, `caption` |
 | Media | `a`, `img`, `iframe` (host-restricted) |
 | Attributes | `href`, `target`, `rel`, `src`, `alt`, `title`, `width`, `height`, `colspan`, `rowspan`, `frameborder`, `allowfullscreen`, `class`, `style` |
-| CSS properties | exact names, because nh3 matches property names and never values: `color`, `background-color`, `font-size`, `font-weight`, `font-style`, `font-family`, `line-height`, `text-align`, `text-decoration`, `vertical-align`, `width`, `max-width`, `height`, `display`, `clear`, `overflow`, and every `padding`, `margin` and `border` shorthand and longhand except `border-image` |
+| CSS properties | exact names, because nh3 matches property names and never values: `color`, `background-color`, `font-size`, `font-weight`, `font-style`, `font-family`, `line-height`, `text-align`, `text-decoration`, `vertical-align`, `width`, `max-width`, `height`, `display`, `clear`, `overflow`, `float` (added after the holdout run showed Spectora's editor floats images in text), and every `padding`, `margin` and `border` shorthand and longhand except `border-image` |
 | **Denied** | `script`, `object`, `embed`, `form`, `input`, `button`, `link`, `meta`, `base`, `svg`, `math`; `on*` handlers; `javascript:` and `data:` URLs except `data:image/*` on `img`; `srcdoc`; `contenteditable`, `draggable`; any CSS property not listed above, including `position`, `z-index`, `behavior`, `background` and `border-image` |
 
 **Tested mechanically against the fixture:** zero tags, zero attributes and zero CSS properties
